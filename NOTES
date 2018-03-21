@@ -1,0 +1,13 @@
+Database dump is in Database
+
+Log into database with:
+mysql -u root -p
+
+password is: '?ILAhmc99?'
+
+show databases;
+CREATE DATABASE farmurban;
+SOURCE /Users/jmht/Downloads/darrenfaulk_daresbury_sensors/Database/farm_urban_new.sql;
+
+had to copy file into directory as simlinks didn't seem to work.
+copied php.ini.default to /etc/php.ini to avoid errors
