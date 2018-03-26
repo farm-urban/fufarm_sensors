@@ -23,14 +23,13 @@ import binascii
 
 from network import WLAN
 from machine import Timer
+from machine import UART
 
 # =============================================================================
 # Debugging and output.
 # =============================================================================
-PRINT_DEBUG = True     # Print debugging output.
-#PRINT_DEBUG = False     # Print debugging output.
-PRINT_OUTPUT = True     # Print informational output.
-#PRINT_OUTPUT = False   # Print informational output.
+PRINT_DEBUG = False     # Print debugging output.
+PRINT_OUTPUT = False     # Print informational output.
 
 # =============================================================================
 # Networking.
@@ -55,10 +54,13 @@ HOST_ADDRESS    = (HOST_NAME, HOST_PORT)
 NTP_AVAILABLE   = False             # NTP server available?
 NTP_ADDRESS     = 'pool.ntp.org'    # Address of open NTP server.
 
+# jmht - send data over the USB cable rather then wifi
+DATA_OVER_USB = True
+
 # =============================================================================
 # Sensor intervals.
 # =============================================================================
-SENSOR_INTERVAL = 5 # Minutes.
+SENSOR_INTERVAL = 1 # Minutes.
 
 # =============================================================================
 # Data structures.
@@ -99,7 +101,15 @@ BLACK = 0x000000 # Black.
 pycom.heartbeat(False)  # Turn off pulsing LED heartbeat.
 
 chrono = Timer.Chrono()
-wlan = WLAN(mode=WLAN.STA)
+if DATA_OVER_USB:
+    # Kill the REPL?
+    #os.dupterm(None)
+    BUS = 0
+    BAUDRATE = 9600
+    uart = UART(BUS, BAUDRATE)
+    uart.init(BAUDRATE, bits=8, parity=None, stop=1)
+else:
+    wlan = WLAN(mode=WLAN.STA)
 
 #   ,-----------------------------------------------------------,
 #   | If there are multiple stations then we need a unique      |
@@ -169,49 +179,50 @@ def connect_to_network():
 #if wlan.isconnected():
 #    wlan.disconnect
 
-connect_to_network()
+if not DATA_OVER_USB:
+    connect_to_network()
 
-# -----------------------------------------------------------------------------
-# End if unable to connect.
-# -----------------------------------------------------------------------------
-# Connection keeps dropping.
-if not wlan.isconnected():
+    # -----------------------------------------------------------------------------
+    # End if unable to connect.
+    # -----------------------------------------------------------------------------
+    # Connection keeps dropping.
+    if not wlan.isconnected():
+        if PRINT_OUTPUT:
+            print("\nCouldn't connect to access point.")
+        pycom.rgbled(RED)
+        sys.exit(1)
+
     if PRINT_OUTPUT:
-        print("\nCouldn't connect to access point.")
-    pycom.rgbled(RED)
-    sys.exit(1)
+        print("")
+        print("\nSuccessfully connected to network.")
 
-if PRINT_OUTPUT:
-    print("")
-    print("\nSuccessfully connected to network.")
-
-# -----------------------------------------------------------------------------
-# Print network info.
-# -----------------------------------------------------------------------------
-if PRINT_OUTPUT:
-    print("Network config:\n")
-    ip, mask, gateway, dns = wlan.ifconfig()
-    print("\tIP          : {}".format(ip))
-    print("\tSubnet mask : {}".format(mask))
-    print("\tGateway     : {}".format(gateway))
-    print("\tDNS server  : {}".format(dns))
-    print()
-    time.sleep(1)
-
-# -----------------------------------------------------------------------------
-# Create network socket.
-# -----------------------------------------------------------------------------
-if PRINT_OUTPUT:
-    print("Trying to create a network socket.")
-try:
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    # -----------------------------------------------------------------------------
+    # Print network info.
+    # -----------------------------------------------------------------------------
     if PRINT_OUTPUT:
-        print("Socket created.\n")
-except:
-    if PRINT_OUTPUT:
-        print("Failed to create socket - quitting.\n")
-    error = True
-    pycom.rgbled(RED)
-    sys.exit()
+        print("Network config:\n")
+        ip, mask, gateway, dns = wlan.ifconfig()
+        print("\tIP          : {}".format(ip))
+        print("\tSubnet mask : {}".format(mask))
+        print("\tGateway     : {}".format(gateway))
+        print("\tDNS server  : {}".format(dns))
+        print()
+        time.sleep(1)
 
-sock.setblocking(False)
+    # -----------------------------------------------------------------------------
+    # Create network socket.
+    # -----------------------------------------------------------------------------
+    if PRINT_OUTPUT:
+        print("Trying to create a network socket.")
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        if PRINT_OUTPUT:
+            print("Socket created.\n")
+    except:
+        if PRINT_OUTPUT:
+            print("Failed to create socket - quitting.\n")
+        error = True
+        pycom.rgbled(RED)
+        sys.exit()
+
+    sock.setblocking(False)

@@ -145,7 +145,7 @@ def get_time():
         dec_time = ntp_time.decode('utf-8')
         set_time = tuple(map(int, dec_time.split(",")))
         rtc.init(set_time)
-        new_time=rtc.now()
+        new_time = rtc.now()
         if PRINT_OUTPUT:
             print("Getting time from database injector.")
             print("Current time is {}".format(old_time))
@@ -164,7 +164,10 @@ def send_data(mac, sensor, value):
         print("Data packet = {}.".format(packet))
         print("")
 
-    sock.sendto(packet, HOST_ADDRESS)
+    if DATA_OVER_USB:
+        uart.write(packet)
+    else:
+        sock.sendto(packet, HOST_ADDRESS)
     time.sleep(1)
 
 def take_readings():

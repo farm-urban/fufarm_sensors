@@ -1,3 +1,4 @@
+#!/usr/bin/env ccp4-python
 # =============================================================================
 # This program tests connecting to a MySQL database from Python.
 #
@@ -13,6 +14,9 @@ import datetime
 import struct
 from datetime import datetime
 from mysql.connector import errorcode
+# jmht
+import select
+import serial
 
 # -----------------------------------------------------------------------------
 # Debugging and output.
@@ -27,16 +31,19 @@ PRINT_OUTPUT = True # Print informational output.
 UDP_IP = "192.168.0.101"
 UDP_PORT = 9000
 
+# jmht - send data over the USB cable rather then wifi
+DATA_OVER_USB = True
+
 # -----------------------------------------------------------------------------
 # Database access.
 # -----------------------------------------------------------------------------
 DB_CONFIG = {
-    'user': 'farm',
-    'password': 'urban',
+    'user': 'foo',
+    'password': 'password',
     'host': 'localhost'
     }
 
-DB_NAME = 'farm_urban'
+DB_NAME = 'farmurban'
 
 # -----------------------------------------------------------------------------
 # Database table structures.
@@ -318,13 +325,22 @@ for sensor, id in sensor_id.items():
 # -----------------------------------------------------------------------------
 # Set up and bind UDP socket.
 # -----------------------------------------------------------------------------
-if PRINT_OUTPUT:
-    print("Networking:")
-sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+poller = select.poll()
+if DATA_OVER_USB:
+    PACKET_SIZE = 20
+    SERIAL_PORT = '/dev/cu.usbmodemPy5a3af1'
+    BAUDRATE = 9600
+    ser = serial.Serial(port=SERIAL_PORT, baudrate=BAUDRATE, bytesize=serial.EIGHTBITS, timeout=2)
+    poller.register(ser)
+else:
+    if PRINT_OUTPUT:
+        print("Networking:")
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    poller.register(socket)
 
-if PRINT_OUTPUT:
-    print("\tBinding socket to {}, port {}".format(UDP_IP, UDP_PORT))
-sock.bind((UDP_IP, UDP_PORT))
+    if PRINT_OUTPUT:
+        print("\tBinding socket to {}, port {}".format(UDP_IP, UDP_PORT))
+    sock.bind((UDP_IP, UDP_PORT))
 
 # -----------------------------------------------------------------------------
 # Waits for initial connection and sends current date and time.
@@ -378,7 +394,35 @@ if PRINT_OUTPUT:
     print("Waiting for sensor data.\n")
 
 while not error:
-    data, addr = sock.recvfrom(512)
+    avail = poller.poll()
+    assert len(avail) == 1, "Poller returned more then one object"
+    fd = avail[0][0]
+    emask = avail[0][1]
+    if (emask & select.POLLIN or emask & select.POLLPRI):
+        if DATA_OVER_USB:
+            iw = 'in_waiting'
+            if not hasattr(ser, iw):
+                iw = 'inWaiting'
+                if not hasattr(ser, iw):
+                    raise AttributeError("Ser object doesn't have in_waiting or inWaiting atrributes!")
+            to_read = getattr(ser, iw)() # call the relevant function
+            print("GOT to_read ",to_read)
+            if to_read == PACKET_SIZE:
+                data = ser.read(PACKET_SIZE)
+                station_mac,\
+                sensor_id,\
+                sensor_data = struct.unpack("@12sHf", data)
+                print("GOT DATA: %s %s %s" % (station_mac, sensor_id, sensor_data))
+            else:
+                # Just clear the output buffer
+                ser.read(to_read)
+        else:
+            data, addr = sock.recvfrom(512)
+    elif emask & select.POLLHUP or  emask & select.POLLERR:
+        print("POLLHUP OR POLLERR")
+        sys.exit(status=1)
+    else:
+        continue # connection could just be available for write for DATA_OVER_USB
 
     if PRINT_OUTPUT:
         print("Received {} bytes of sensor data.".format(len(data)))
@@ -410,6 +454,9 @@ while not error:
 # -----------------------------------------------------------------------------
 # Tidy up.
 # -----------------------------------------------------------------------------
-sock.close()
+if DATA_OVER_USB:
+    ser.close()
+else:
+    sock.close()
 cursor.close()
 db.close()
