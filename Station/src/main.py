@@ -273,6 +273,8 @@ def take_readings():
 #get_time()
 
 error = False
+if PRINT_OUTPUT:
+    print("Starting Main Loop")
 take_readings()
 
 chrono.start()

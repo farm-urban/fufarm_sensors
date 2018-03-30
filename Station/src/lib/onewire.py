@@ -1,9 +1,3 @@
-#!/usr/bin/env python3
-
-"""
-OneWire library for MicroPython
-"""
-
 import time
 import machine
 
@@ -181,7 +175,7 @@ class DS18X20(object):
         """
         if (rom==None) and (len(self.roms)>0):
             rom=self.roms[0]
-        if rom!=None:    
+        if rom!=None:
             rom = rom or self.roms[0]
             ow = self.ow
             ow.reset()
@@ -197,7 +191,7 @@ class DS18X20(object):
             return None
         if (rom==None) and (len(self.roms)>0):
             rom=self.roms[0]
-        if rom==None:     
+        if rom==None:
             return None
         else:
             ow = self.ow
