@@ -225,14 +225,6 @@ class Database(object):
         res = self.connection.commit()
         logger.info("Got result: %s" % res)
 
-    def create_database(self, database):
-        try:
-            self.cursor.execute(
-                "CREATE DATABASE {} CHARACTER SET utf8 COLLATE utf8_bin".format(database))
-        except mysql.connector.Error as err:
-            logger.citical("\tFailed to create database: {}".format(err))
-            sys.exit(1)
-
     def get_station_id(self, mac):
         QUERY_STATION = ("SELECT id FROM stations WHERE mac = %s")
         id_str = "unknown"
@@ -259,9 +251,79 @@ class Database(object):
         logger.info("Sensor %s is %s", id, name_str)
         return name
 
+    def connect_or_create_database(self, database):
+        """Establish database connection or create the database if it doesn't exist."""
+        try:
+            self.connection.database = database
+        except mysql.connector.Error as err:
+            if err.errno == errorcode.ER_BAD_DB_ERROR:
+                logger.info("\tCreating new database \"{}\": ".format(database))
+                self.create_database(database)
+                self.connection.database = database
+            else:
+                logger.info(err)
+                exit(1)
+        else:
+            logger.info("\tDatabase \"{}\" already exists.".format(self.connection.database))
+        return
+
+    def create_database(self, database):
+        try:
+            self.cursor.execute(
+                "CREATE DATABASE {} CHARACTER SET utf8 COLLATE utf8_bin".format(database))
+        except mysql.connector.Error as err:
+            logger.citical("\tFailed to create database: {}".format(err))
+            raise
+
+    def create_tables(self):
+        """Create the tables if they don't exist."""
+        for name, ddl in self.tables.items():
+            try:
+                self.cursor.execute(ddl)
+            except mysql.connector.Error as err:
+                if err.errno == errorcode.ER_TABLE_EXISTS_ERROR:
+                    logger.info("\tTable \"{}\" already exists.".format(name))
+                else:
+                    logger.info(err.msg)
+            else:
+                logger.info("\tCreated new table \"{}\"".format(name))
+
+    def populate_sensors(self):
+        """Populate the sensors table."""
+        logger.debug("Entering sensor ID.")
+        for sensor, id in self.sensor_id_map.items():
+            self.insert_value_sensor(sensor, id)
+
+    def process_data(self, data):
+        """Process a received packet of sensor data"""
+        # Unpack the UDP data into it's components.
+        station_mac,\
+        sensor_id,\
+        sensor_data = struct.unpack("@12sHf", data)
+
+        # Store station MAC address and get ID.
+        station = self.get_station_id(station_mac)
+        if not station:
+            self.insert_value_station(station_mac)
+            station = self.get_station_id(station_mac)
+
+        sensor_name = self.get_sensor_name(sensor_id)
+        if sensor_name:
+            logger.info("Sensor %s reading = %s", sensor_name.decode(), sensor_data)
+
+        # ,-------------------------------------------------------,
+        # | Currently the time stamp is made here for convenience |
+        # | in case the station board cannot set it's clock.      |
+        # '-------------------------------------------------------'
+        read_time = datetime.now()
+
+        logging.debug("SENSOR DATA: %s %s %s %s", read_time, station, sensor_name, sensor_data)
+        sensor_data = (read_time, station, sensor_name, sensor_data)
+        self.insert_value_data(sensor_data)
+        return
+
     def setup_database(self, db_config):
-        logger.info("Initialising...\n")
-        logger.info("Database:")
+        logger.info("Initialising Database")
         database = db_config.pop('database')
         try:
             self.connection = mysql.connector.connect(**db_config)
@@ -276,43 +338,9 @@ class Database(object):
                 logger.info(err)
                 sys.exit(1)
         self.cursor = self.connection.cursor()
-
-        # ,---------------------------------------------,
-        # | Create the database if it doesn't exist.    |
-        # '---------------------------------------------'
-        try:
-            self.connection.database = database
-        except mysql.connector.Error as err:
-            if err.errno == errorcode.ER_BAD_DB_ERROR:
-                logger.info("\tCreating new database \"{}\": ".format(database))
-                self.create_database(database)
-                self.connection.database = database
-            else:
-                logger.info(err)
-                exit(1)
-        else:
-            logger.info("\tDatabase \"{}\" already exists.".format(self.connection.database))
-
-        # ,-----------------------------------------,
-        # | Create the tables if they don't exist.  |
-        # '-----------------------------------------'
-        for name, ddl in self.tables.items():
-            try:
-                self.cursor.execute(ddl)
-            except mysql.connector.Error as err:
-                if err.errno == errorcode.ER_TABLE_EXISTS_ERROR:
-                    logger.info("\tTable \"{}\" already exists.".format(name))
-                else:
-                    logger.info(err.msg)
-            else:
-                logger.info("\tCreated new table \"{}\"".format(name))
-
-        # ,-----------------------------,
-        # | Populate the sensors table. |
-        # '-----------------------------'
-        logger.info("Entering sensor ID.")
-        for sensor, id in self.sensor_id_map.items():
-            self.insert_value_sensor(sensor, id)
+        self.connect_or_create_database(database)
+        self.create_tables()
+        self.populate_sensors()
         return
 
 def set_time():
@@ -379,7 +407,6 @@ def main():
     DB = Database(db_config=DB_CONFIG)
     if not (SOCKET or SERIAL):
         setup_data_transfer()
-
     error = False # Error trapping variable.
     #set_time()
     logger.info("Waiting for sensor data.\n")
@@ -400,35 +427,9 @@ def main():
                 data = SERIAL.read(to_read)
         else:
             data, addr = SOCKET.recvfrom(512)
-
-        if not data:
-            continue
-        logger.info("Received %s bytes of sensor data.", len(data))
-
-        # Unpack the UDP data into it's components.
-        station_mac,\
-        sensor_id,\
-        sensor_data = struct.unpack("@12sHf", data)
-
-        # Store station MAC address and get ID.
-        station = DB.get_station_id(station_mac)
-        if not station:
-            DB.insert_value_station(station_mac)
-            station = DB.get_station_id(station_mac)
-
-        sensor_name = DB.get_sensor_name(sensor_id)
-        if sensor_name:
-            logger.info("Sensor %s reading = %s", sensor_name.decode(), sensor_data)
-
-        # ,-------------------------------------------------------,
-        # | Currently the time stamp is made here for convenience |
-        # | in case the station board cannot set it's clock.      |
-        # '-------------------------------------------------------'
-        read_time = datetime.now()
-
-        logging.debug("SENSOR DATA: %s %s %s %s", read_time, station, sensor_name, sensor_data)
-        sensor_data = (read_time, station, sensor_name, sensor_data)
-        DB.insert_value_data(sensor_data)
+        if data:
+            logger.info("Received %s bytes of sensor data.", len(data))
+            DB.process_data(data)
 
     # -----------------------------------------------------------------------------
     # Tidy up.
