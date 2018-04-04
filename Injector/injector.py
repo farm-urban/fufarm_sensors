@@ -38,10 +38,10 @@ import fu_database
 logger = logging.getLogger(__name__)
 
 TEST_CONNECTOR = None
-USB_CONFIG = { 'port' : '/dev/cu.usbmodemPy5a3af1',
-                'baudrate' : 9600,
-                'bytesize' : serial.EIGHTBITS
-}
+USB_CONFIG = {'port' : '/dev/cu.usbmodemPy5a3af1',
+              'baudrate' : 9600,
+              'bytesize' : serial.EIGHTBITS
+             }
 
 class Connector(object):
     """Class for handling data transfer over sockets/USB/..."""
@@ -62,7 +62,7 @@ class Connector(object):
                                                     bytesize=bytesize, timeout=2)
             else:
                 self.serial = serial.Serial(port=port, baudrate=baudrate,
-                                           bytesize=bytesize, timeout=2)
+                                            bytesize=bytesize, timeout=2)
             logger.debug("SETUP SERIAL %s", self.serial)
             self.in_waiting = 'in_waiting'
             if not hasattr(self.serial, self.in_waiting):
@@ -76,7 +76,7 @@ class Connector(object):
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             # poller.register(socket)
             logger.info("\tBinding socket to {}, port {}".format(socket_config['UDP_IP'],
-            socket_config['UDP_PORT']))
+                                                                 socket_config['UDP_PORT']))
             self.socket.bind((socket_config['UDP_IP'], socket_config['UDP_PORT']))
         else:
             raise AttributeError
@@ -96,6 +96,14 @@ class Connector(object):
         else:
             raise AttributeError
         return data
+
+    def send(self, packet):
+        if self.serial:
+            self.serial.write(packet)
+        elif self.socket:
+            self.socket.sendto(packet, HOST_ADDRESS)
+        else:
+            assert AttributeError
 
     def shutdown(self):
         if self.serial:
@@ -121,12 +129,12 @@ class Connector(object):
         logger.info("Waiting for NTP request.\n")
         waiting_ntp = True
         while waiting_ntp:
-            data, addr = SOCKET.recvfrom(512)
+            data, addr = self.socket.recvfrom(512)
             stringdata = data.decode('utf-8')
             if stringdata == "ntp":
                 logger.info("Received request for NTP.")
                 ntp_string = "{}".format(datetime.now())
-                ntp_bytes = ntp_string.encode('utf-8')
+                #ntp_bytes = ntp_string.encode('utf-8')
                 ntp_tuple = time.strptime(ntp_string, "%Y-%m-%d %H:%M:%S.%f")
                 packet = "{},{},{},{},{},{},{},{}".format(ntp_tuple.tm_year,\
                                                         ntp_tuple.tm_mon,\
@@ -136,27 +144,33 @@ class Connector(object):
                                                         ntp_tuple.tm_sec,\
                                                         ntp_tuple.tm_wday,\
                                                         ntp_tuple.tm_yday)
-                logger.info("Packet = {}.".format(packet))
-                SOCKET.sendto(packet.encode('utf-8'), addr)
+                logger.info("Packet = %s.", packet)
+                self.socket.sendto(packet.encode('utf-8'), addr)
                 waiting_ntp = False
 
-def main():
-    database = fu_database.Database(db_config=fu_database.DB_CONFIG)
-    if TEST_CONNECTOR:
-        connector = TEST_CONNECTOR
-    else:
+def main(database=None, connector=None, max_readings=None):
+    own_database = False
+    if not database:
+        database = fu_database.Database(db_config=fu_database.DB_CONFIG)
+        own_database = True
+    if not connector:
         connector = Connector(usb_config=USB_CONFIG)
     #set_time()
+    i = 0
     logger.info("Waiting for sensor data.\n")
-    error = False
-    while not error:
-        time.sleep(1)
+    while True:
+        if max_readings and i >= max_readings:
+            break
         data = connector.get_data()
         if data:
             logger.info("Received %s bytes of sensor data.", len(data))
             database.process_data(data)
+        time.sleep(1)
+        i += 1
+
     connector.shutdown()
-    database.close()
+    if own_database:
+        database.close()
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)

@@ -37,6 +37,8 @@ DB_CONFIG = {
     'database' : 'farmurban'
     }
 
+MOCK_TABLE = 'mock'
+
 class Database(object):
     """Class for managing data in a database (currently MySQL)
 
@@ -169,14 +171,14 @@ class Database(object):
             self.connection.database = database
         except mysql.connector.Error as err:
             if err.errno == errorcode.ER_BAD_DB_ERROR:
-                logger.info("\tCreating new database \"{}\": ".format(database))
+                logger.info("\tCreating new database \"%s\": ", database)
                 self.create_database(database)
                 self.connection.database = database
             else:
                 logger.info(err)
                 exit(1)
         else:
-            logger.info("\tDatabase \"{}\" already exists.".format(self.connection.database))
+            logger.info("\tDatabase \"%s\" already exists.", self.connection.database)
         return
 
     def create_database(self, database):
@@ -290,6 +292,19 @@ class Database(object):
         sensor_data = (read_time, station, sensor_name, sensor_data)
         self.insert_value_data(sensor_data)
         return
+
+    def reset_mock_table(self):
+        """Clear the mock sensor data for testing
+        """
+        query = ("TRUNCATE TABLE %s;" % MOCK_TABLE)
+        self.cursor.execute(query)
+        self.connection.commit()
+        return
+
+    def get_mock_data(self):
+        query = ("SELECT * FROM %s" % MOCK_TABLE)
+        self.cursor.execute(query)
+        return self.cursor.fetchall()
 
     def setup_database(self, db_config):
         logger.info("Initialising Database")

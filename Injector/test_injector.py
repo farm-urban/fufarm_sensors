@@ -8,22 +8,42 @@ import time
 import fu_database
 import injector
 
-logging.basicConfig(level=logging.DEBUG)
-def send_data():
-    time.sleep(1)
-    sensor_id = fu_database.Database.sensor_id_map['mock']
-    for i in range(10):
-        packet = struct.pack("@12sHf", "###########0".encode('ascii'), sensor_id, float(i))
-        injector.TEST_CONNECTOR.serial.write(packet)
-        time.sleep(2)
+logging.basicConfig(level=logging.CRITICAL)
 
-# Set up the data pipe
-usb_config = injector.USB_CONFIG
-usb_config['port'] = 'loop://'
-injector.TEST_CONNECTOR = injector.Connector(usb_config=usb_config)
+def test_injector():
+    NREADINGS = 10
+    # Set up the connector and database and clear old test data
+    usb_config = injector.USB_CONFIG
+    usb_config['port'] = 'loop://'
+    connector = injector.Connector(usb_config=usb_config)
+    database = fu_database.Database(db_config=fu_database.DB_CONFIG)
+    database.reset_mock_table()
 
-sensor_thread = threading.Thread(target=send_data)
-injector_thread = threading.Thread(target=injector.main)
+    def send_test_data():
+        time.sleep(1)
+        sensor_id = fu_database.Database.sensor_id_map[fu_database.MOCK_TABLE]
+        for i in range(NREADINGS):
+            packet = struct.pack("@12sHf", "###########0".encode('ascii'), sensor_id, float(i))
+            # REFACTOR TO USE A WRITE METHOD - AND CHECK WITH CODE ON WIPY
+            connector.send(packet)
+            time.sleep(2)
 
-sensor_thread.start()
-injector_thread.start()
+    sensor_thread = threading.Thread(target=send_test_data)
+    kwargs = {'max_readings' : NREADINGS * 2,
+              'connector' : connector,
+              'database' : database}
+    injector_thread = threading.Thread(target=injector.main, kwargs=kwargs)
+
+    sensor_thread.start()
+    injector_thread.start()
+    injector_thread.join() # wait for test to complete
+
+    results = database.get_mock_data()
+    assert len(results) == 10
+    last = results[9]
+    assert len(last) == 3
+    assert last[2] == 9.0
+
+if __name__ == '__main__':
+    import pytest
+    pytest.main()
