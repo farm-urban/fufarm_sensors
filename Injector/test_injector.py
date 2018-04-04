@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 import logging
-#import sqlite3
 import struct
 import threading
 import time
 
 # local imports
+import fu_database
 import injector
 
 logging.basicConfig(level=logging.DEBUG)
@@ -14,7 +14,7 @@ injector.SERIAL_PORT = 'loop://'
 
 def send_data():
     time.sleep(1)
-    sensor_id = injector.Database.sensor_id_map['mock']
+    sensor_id = fu_database.Database.sensor_id_map['mock']
     for i in range(10):
         packet = struct.pack("@12sHf", "###########0".encode('ascii'), sensor_id, float(i))
         injector.SERIAL.write(packet)
