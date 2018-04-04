@@ -37,115 +37,126 @@ import fu_database
 
 logger = logging.getLogger(__name__)
 
-# -----------------------------------------------------------------------------
-# Networking.
-# -----------------------------------------------------------------------------
-#UDP_IP = "127.0.0.1"
-UDP_IP = "192.168.0.101"
-UDP_PORT = 9000
+TEST_CONNECTOR = None
+USB_CONFIG = { 'port' : '/dev/cu.usbmodemPy5a3af1',
+                'baudrate' : 9600,
+                'bytesize' : serial.EIGHTBITS
+}
 
-# jmht - send data over the USB cable rather then wifi
-DATA_OVER_USB = True
-SERIAL_PORT = '/dev/cu.usbmodemPy5a3af1'
-SERIAL = None
-SOCKET = None
-PACKET_SIZE = 20
-BAUDRATE = 9600
-IN_WAITING = None
-
-def set_time():
-    """
-    Waits for initial connection and sends current date and time.
-
-    The intent for this function is to provide a fallback
-    method for the station sensor board to set it's clock
-    after being off without a battery back up.
-    It needs to be triggered by a request, which is
-    difficult because the data packet structure is fixed.
-    At the moment this function is not called as the time
-    is created by this program rather than the station
-    sensor board.
-    """
-    logger.info("Waiting for NTP request.\n")
-    waiting_ntp = True
-    while waiting_ntp:
-        data, addr = SOCKET.recvfrom(512)
-        stringdata = data.decode('utf-8')
-        if stringdata == "ntp":
-            logger.info("Received request for NTP.")
-            ntp_string = "{}".format(datetime.now())
-            ntp_bytes = ntp_string.encode('utf-8')
-            ntp_tuple = time.strptime(ntp_string, "%Y-%m-%d %H:%M:%S.%f")
-            packet = "{},{},{},{},{},{},{},{}".format(ntp_tuple.tm_year,\
-                                                    ntp_tuple.tm_mon,\
-                                                    ntp_tuple.tm_mday,\
-                                                    ntp_tuple.tm_hour,\
-                                                    ntp_tuple.tm_min,\
-                                                    ntp_tuple.tm_sec,\
-                                                    ntp_tuple.tm_wday,\
-                                                    ntp_tuple.tm_yday)
-            logger.info("Packet = {}.".format(packet))
-            SOCKET.sendto(packet.encode('utf-8'), addr)
-            waiting_ntp = False
-
-def setup_data_transfer():
-    global PACKET_SIZE, BAUDRATE, IN_WAITING, SERIAL, SOCKET, DATA_OVER_USB
-    if DATA_OVER_USB:
-        if SERIAL_PORT.startswith('loop://'):
-            SERIAL = serial.serial_for_url(SERIAL_PORT, baudrate=BAUDRATE,
-                                           bytesize=serial.EIGHTBITS, timeout=2)
+class Connector(object):
+    """Class for handling data transfer over sockets/USB/..."""
+    def __init__(self, usb_config=None, socket_config=None):
+        assert usb_config or socket_config, "Need configuration data!"
+        self.serial = None
+        self.socket = None
+        self.in_waiting = None
+        self.packet_size = 20
+        if usb_config:
+            for k in ['port', 'baudrate', 'bytesize']:
+                assert k in usb_config
+            port = usb_config['port']
+            baudrate = usb_config['baudrate']
+            bytesize = usb_config['bytesize']
+            if port.startswith('loop://'): # for testing
+                self.serial = serial.serial_for_url(port, baudrate=baudrate,
+                                                    bytesize=bytesize, timeout=2)
+            else:
+                self.serial = serial.Serial(port=port, baudrate=baudrate,
+                                           bytesize=bytesize, timeout=2)
+            logger.debug("SETUP SERIAL %s", self.serial)
+            self.in_waiting = 'in_waiting'
+            if not hasattr(self.serial, self.in_waiting):
+                self.in_waiting = 'inWaiting'
+                if not hasattr(self.serial, self.in_waiting):
+                    raise AttributeError("Ser object doesn't have in_waiting or inWaiting atrributes!")
+            self.in_waiting = getattr(self.serial, self.in_waiting)
+        elif socket_config:
+            #UDP_IP = "192.168.0.101"
+            #UDP_PORT = 9000
+            self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            # poller.register(socket)
+            logger.info("\tBinding socket to {}, port {}".format(socket_config['UDP_IP'],
+            socket_config['UDP_PORT']))
+            self.socket.bind((socket_config['UDP_IP'], socket_config['UDP_PORT']))
         else:
-            SERIAL = serial.Serial(port=SERIAL_PORT, baudrate=BAUDRATE,
-                                   bytesize=serial.EIGHTBITS, timeout=2)
-        logger.debug("SETUP SERIAL %s", SERIAL)
-        IN_WAITING = 'in_waiting'
-        if not hasattr(SERIAL, IN_WAITING):
-            IN_WAITING = 'inWaiting'
-            if not hasattr(SERIAL, IN_WAITING):
-                raise AttributeError("Ser object doesn't have in_waiting or inWaiting atrributes!")
-        IN_WAITING = getattr(SERIAL, IN_WAITING)
-        # poller.register(ser)
-    else:
-        logger.info("Networking:")
-        SOCKET = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        # poller.register(socket)
-        logger.info("\tBinding socket to {}, port {}".format(UDP_IP, UDP_PORT))
-        SOCKET.bind((UDP_IP, UDP_PORT))
+            raise AttributeError
 
-def main():
-    global SOCKET, SERIAL, IN_WAITING, PACKET_SIZE
-    DB = fu_database.Database(db_config=fu_database.DB_CONFIG)
-    if not (SOCKET or SERIAL):
-        setup_data_transfer()
-    error = False # Error trapping variable.
-    #set_time()
-    logger.info("Waiting for sensor data.\n")
-    while not error:
-        time.sleep(1)
+    def get_data(self):
         data = None
-        if DATA_OVER_USB:
-            global PACKET_SIZE
-            to_read = IN_WAITING() # call the relevant function
+        if self.serial:
+            to_read = self.in_waiting()
             logger.info("GOT to_read %s ", to_read)
-            if to_read == PACKET_SIZE:
-                data = SERIAL.read(PACKET_SIZE)
+            if to_read == self.packet_size:
+                data = self.serial.read(self.packet_size)
             else:
                 # Just clear the output buffer
-                SERIAL.read(to_read)
+                self.serial.read(to_read)
+        elif self.socket:
+            data, addr = self.socket.recvfrom(512)
         else:
+            raise AttributeError
+        return data
+
+    def shutdown(self):
+        if self.serial:
+            self.serial.close()
+        elif self.socket:
+            self.socket.close()
+        else:
+            raise AttributeError
+
+    def Xset_time(self):
+        """
+        Waits for initial connection and sends current date and time.
+
+        The intent for this function is to provide a fallback
+        method for the station sensor board to set it's clock
+        after being off without a battery back up.
+        It needs to be triggered by a request, which is
+        difficult because the data packet structure is fixed.
+        At the moment this function is not called as the time
+        is created by this program rather than the station
+        sensor board.
+        """
+        logger.info("Waiting for NTP request.\n")
+        waiting_ntp = True
+        while waiting_ntp:
             data, addr = SOCKET.recvfrom(512)
+            stringdata = data.decode('utf-8')
+            if stringdata == "ntp":
+                logger.info("Received request for NTP.")
+                ntp_string = "{}".format(datetime.now())
+                ntp_bytes = ntp_string.encode('utf-8')
+                ntp_tuple = time.strptime(ntp_string, "%Y-%m-%d %H:%M:%S.%f")
+                packet = "{},{},{},{},{},{},{},{}".format(ntp_tuple.tm_year,\
+                                                        ntp_tuple.tm_mon,\
+                                                        ntp_tuple.tm_mday,\
+                                                        ntp_tuple.tm_hour,\
+                                                        ntp_tuple.tm_min,\
+                                                        ntp_tuple.tm_sec,\
+                                                        ntp_tuple.tm_wday,\
+                                                        ntp_tuple.tm_yday)
+                logger.info("Packet = {}.".format(packet))
+                SOCKET.sendto(packet.encode('utf-8'), addr)
+                waiting_ntp = False
+
+def main():
+    database = fu_database.Database(db_config=fu_database.DB_CONFIG)
+    if TEST_CONNECTOR:
+        connector = TEST_CONNECTOR
+    else:
+        connector = Connector(usb_config=USB_CONFIG)
+    #set_time()
+    logger.info("Waiting for sensor data.\n")
+    error = False
+    while not error:
+        time.sleep(1)
+        data = connector.get_data()
         if data:
             logger.info("Received %s bytes of sensor data.", len(data))
-            DB.process_data(data)
-
-    # -----------------------------------------------------------------------------
-    # Tidy up.
-    # -----------------------------------------------------------------------------
-    if DATA_OVER_USB:
-        SERIAL.close()
-    else:
-        SOCKET.close()
-    DB.close()
+            database.process_data(data)
+    connector.shutdown()
+    database.close()
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
