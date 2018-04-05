@@ -36,6 +36,11 @@ from network import WLAN
 from machine import Timer
 from machine import UART
 
+import logging
+logging.basicConfig(level=logging.CRITICAL)
+logger = logging.getLogger(__name__)
+logger.critical("Critical")
+
 # =============================================================================
 # Debugging and output.
 # =============================================================================
@@ -71,7 +76,7 @@ DATA_OVER_USB = True
 # =============================================================================
 # Sensor intervals.
 # =============================================================================
-SENSOR_INTERVAL = 0.1 # Minutes.
+SENSOR_INTERVAL = 0.2 # Minutes.
 
 # =============================================================================
 # Data structures.
