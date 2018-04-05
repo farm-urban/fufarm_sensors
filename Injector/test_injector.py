@@ -16,7 +16,8 @@ def test_injector():
     usb_config = injector.USB_CONFIG
     usb_config['port'] = 'loop://'
     connector = injector.Connector(usb_config=usb_config)
-    database = fu_database.Database(db_config=fu_database.DB_CONFIG)
+    database = fu_database.Database(db_config=fu_database.db_config())
+    database.ignore_close = True
     database.reset_mock_table()
 
     def send_test_data():
@@ -38,6 +39,9 @@ def test_injector():
     injector_thread.start()
     injector_thread.join() # wait for test to complete
 
+    # Check results
+    # Database connection will have been closed
+    database.init_database(db_config=fu_database.db_config())
     results = database.get_mock_data()
     assert len(results) == 10
     last = results[9]

@@ -149,10 +149,8 @@ class Connector(object):
                 waiting_ntp = False
 
 def main(database=None, connector=None, max_readings=None):
-    own_database = False
     if not database:
         database = fu_database.Database(db_config=fu_database.DB_CONFIG)
-        own_database = True
     if not connector:
         connector = Connector(usb_config=USB_CONFIG)
     #set_time()
@@ -169,8 +167,7 @@ def main(database=None, connector=None, max_readings=None):
         i += 1
 
     connector.shutdown()
-    if own_database:
-        database.close()
+    database.close()
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)

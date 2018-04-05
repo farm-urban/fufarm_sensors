@@ -19,6 +19,7 @@
 
 """
 
+import copy
 from datetime import datetime
 import logging
 import struct
@@ -36,6 +37,9 @@ DB_CONFIG = {
     'host': 'localhost',
     'database' : 'farmurban'
     }
+def db_config():
+    """Return a copy of the DB_CONFIG as it may be altered"""
+    return copy.copy(DB_CONFIG)
 
 MOCK_TABLE = 'mock'
 
@@ -103,69 +107,36 @@ class Database(object):
     def __init__(self, db_config):
         self.connection = None
         self.cursor = None
-        self.setup_database(db_config)
+        self.init_database(db_config)
         return
 
-    def close(self):
-        self.connection.close()
-        self.cursor.close()
+    def init_database(self, db_config):
+        assert not (self.connection or self.cursor)
+        logger.info("Initialising Database")
+        database = db_config.pop('database')
+        self.set_connection_and_cursor(db_config)
+        self.set_or_create_database(database)
+        self.create_tables()
+        self.populate_sensors()
+        return
 
-    def insert_value_station(self, mac):
-        INSERT_STATION = ("INSERT IGNORE INTO stations (mac, id) VALUES (%s, %s)")
-        logger.info("Storing station ID for %s", mac.decode)
-        station_data = (mac, "NULL")
-        self.cursor.execute(INSERT_STATION, station_data)
-        self.connection.commit()
+    def set_connection_and_cursor(self, db_config):
+        try:
+            self.connection = mysql.connector.connect(**db_config)
+        except mysql.connector.Error as err:
+            if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
+                logger.critical("Something is wrong with your database user name or password")
+                sys.exit(1)
+            elif err.errno == errorcode.ER_BAD_DB_ERROR:
+                logger.critical("Database does not exist")
+                sys.exit(1)
+            else:
+                logger.critical(err)
+                sys.exit(1)
+        self.cursor = self.connection.cursor()
+        return
 
-    def insert_value_sensor(self, name, id):
-        INSERT_SENSOR = ("INSERT IGNORE INTO sensors (sensor, id) VALUES (%s, %s)")
-        logger.info("ID {:2} = {}.".format(id, name))
-        self.cursor.execute(INSERT_SENSOR, (name, id))
-        self.connection.commit()
-
-    def insert_value_data(self, data):
-        time = data[0]
-        station = data[1]
-        sensor = data[2].decode()
-        value = data[3]
-        logger.info("Inserting data into table.")
-        logger.info("\tTime = {}.".format(time))
-        logger.info("\tStation = {}.".format(station))
-        logger.info("\tSensor = {}.".format(sensor))
-        logger.info("\tValue = {}.".format(value))
-        INSERT_DATA = ("INSERT IGNORE INTO {} (time, station, reading) "
-                       "VALUES (%s, %s, %s)".format(sensor))
-        self.cursor.execute(INSERT_DATA, (time, station, value))
-        res = self.connection.commit()
-        logger.info("Got result: %s" % res)
-
-    def get_station_id(self, mac):
-        QUERY_STATION = ("SELECT id FROM stations WHERE mac = %s")
-        id_str = "unknown"
-        self.cursor.execute(QUERY_STATION, (mac,))
-        id = self.cursor.fetchone()
-        if id:
-            id = id[0]
-            id_str = id
-        else:
-            id = None
-        logger.info("Station %s is %s", mac.decode(), id_str)
-        return id
-
-    def get_sensor_name(self, id):
-        QUERY_SENSOR = ("SELECT sensor FROM sensors WHERE id = %s")
-        name_str = "unknown"
-        self.cursor.execute(QUERY_SENSOR, (id,))
-        name = self.cursor.fetchone()
-        if name:
-            name = name[0]
-            name_str = name.decode()
-        else:
-            name = None
-        logger.info("Sensor %s is %s", id, name_str)
-        return name
-
-    def connect_or_create_database(self, database):
+    def set_or_create_database(self, database):
         """Establish database connection or create the database if it doesn't exist."""
         try:
             self.connection.database = database
@@ -188,6 +159,7 @@ class Database(object):
         except mysql.connector.Error as err:
             logger.citical("\tFailed to create database: {}".format(err))
             raise
+        return
 
     def create_tables(self):
         """Create the tables if they don't exist."""
@@ -260,12 +232,79 @@ class Database(object):
                     logger.info(err.msg)
             else:
                 logger.info("\tCreated new table \"{}\"".format(name))
+        return
 
     def populate_sensors(self):
         """Populate the sensors table."""
         logger.debug("Entering sensor ID.")
         for sensor, id in self.sensor_id_map.items():
             self.insert_value_sensor(sensor, id)
+        return
+
+    def close(self):
+        self.connection.close()
+        self.cursor.close()
+        self.connection = None
+        self.cursor = None
+        return
+
+    def insert_value_station(self, mac):
+        INSERT_STATION = ("INSERT IGNORE INTO stations (mac, id) VALUES (%s, %s)")
+        logger.info("Storing station ID for %s", mac.decode)
+        station_data = (mac, "NULL")
+        self.cursor.execute(INSERT_STATION, station_data)
+        self.connection.commit()
+        return
+
+    def insert_value_sensor(self, name, id):
+        INSERT_SENSOR = ("INSERT IGNORE INTO sensors (sensor, id) VALUES (%s, %s)")
+        logger.info("ID {:2} = {}.".format(id, name))
+        self.cursor.execute(INSERT_SENSOR, (name, id))
+        self.connection.commit()
+        return
+
+    def insert_value_data(self, data):
+        time = data[0]
+        station = data[1]
+        sensor = data[2].decode()
+        value = data[3]
+        logger.info("Inserting data into table.")
+        logger.info("\tTime = {}.".format(time))
+        logger.info("\tStation = {}.".format(station))
+        logger.info("\tSensor = {}.".format(sensor))
+        logger.info("\tValue = {}.".format(value))
+        INSERT_DATA = ("INSERT IGNORE INTO {} (time, station, reading) "
+                       "VALUES (%s, %s, %s)".format(sensor))
+        self.cursor.execute(INSERT_DATA, (time, station, value))
+        res = self.connection.commit()
+        logger.info("Got result: %s" % res)
+        return
+
+    def get_station_id(self, mac):
+        QUERY_STATION = ("SELECT id FROM stations WHERE mac = %s")
+        id_str = "unknown"
+        self.cursor.execute(QUERY_STATION, (mac,))
+        id = self.cursor.fetchone()
+        if id:
+            id = id[0]
+            id_str = id
+        else:
+            id = None
+        logger.info("Station %s is %s", mac.decode(), id_str)
+        return id
+
+    def get_sensor_name(self, id):
+        QUERY_SENSOR = ("SELECT sensor FROM sensors WHERE id = %s")
+        name_str = "unknown"
+        self.cursor.execute(QUERY_SENSOR, (id,))
+        name = self.cursor.fetchone()
+        if name:
+            name = name[0]
+            name_str = name.decode()
+        else:
+            name = None
+        logger.info("Sensor %s is %s", id, name_str)
+        return name
 
     def process_data(self, data):
         """Process a received packet of sensor data"""
@@ -305,24 +344,3 @@ class Database(object):
         query = ("SELECT * FROM %s" % MOCK_TABLE)
         self.cursor.execute(query)
         return self.cursor.fetchall()
-
-    def setup_database(self, db_config):
-        logger.info("Initialising Database")
-        database = db_config.pop('database')
-        try:
-            self.connection = mysql.connector.connect(**db_config)
-        except mysql.connector.Error as err:
-            if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
-                logger.info("Something is wrong with your user name or password")
-                sys.exit(1)
-            elif err.errno == errorcode.ER_BAD_DB_ERROR:
-                logger.info("Database does not exist")
-                sys.exit(1)
-            else:
-                logger.info(err)
-                sys.exit(1)
-        self.cursor = self.connection.cursor()
-        self.connect_or_create_database(database)
-        self.create_tables()
-        self.populate_sensors()
-        return
