@@ -150,7 +150,7 @@ class Connector(object):
 
 def main(database=None, connector=None, max_readings=None):
     if not database:
-        database = fu_database.Database(db_config=fu_database.DB_CONFIG)
+        database = fu_database.Database(db_config=fu_database.db_config())
     if not connector:
         connector = Connector(usb_config=USB_CONFIG)
     #set_time()
