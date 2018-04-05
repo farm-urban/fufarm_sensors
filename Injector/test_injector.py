@@ -6,6 +6,7 @@ import time
 
 # local imports
 import fu_database
+import fu_connector
 import injector
 
 logging.basicConfig(level=logging.CRITICAL)
@@ -13,9 +14,9 @@ logging.basicConfig(level=logging.CRITICAL)
 def test_injector():
     NREADINGS = 10
     # Set up the connector and database and clear old test data
-    usb_config = injector.USB_CONFIG
+    usb_config = fu_connector.USB_CONFIG
     usb_config['port'] = 'loop://'
-    connector = injector.Connector(usb_config=usb_config)
+    connector = fu_connector.connectorFactory(serial_config=usb_config)
     database = fu_database.Database(db_config=fu_database.db_config())
     database.ignore_close = True
     database.reset_mock_table()
