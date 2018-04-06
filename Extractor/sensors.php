@@ -47,6 +47,7 @@
     $date_query = " time BETWEEN " . $start_date .
                   " AND " . $end_date;
 
+    $station = (isset($_REQUEST["station"]) ? $_REQUEST["station"]: "1");
     //  ,-------------------------------,
     //  | Charts.                       |
     //  '-------------------------------'
@@ -138,8 +139,7 @@
     //  '---------------------------------------'
 
     function water_temp_asjson(){
-        global $date_query, $db_handle;
-        $station = 1;
+        global $date_query, $db_handle, $station;
         $sensor = "water_temperature";
         $values = "time, reading";
         $db_query = "SELECT " . $values . " FROM " . $sensor .
@@ -203,8 +203,6 @@
         return $json_wat_temp_1;
   }
 
-    $json_wat_temp_1 = water_temp_asjson();
-
 //  '---------------------------------------------------------------'
 //  | The following sensor sections are pretty much copy and pastes |
 //  | of the previous water_temperature routine so duplicate        |
@@ -213,11 +211,10 @@
 
 
   function bar_temp_asjson(){
-      global $date_query, $db_handle;
+      global $date_query, $db_handle, $station;
       //  ,-------------------------------------------,
       //  | **** Station 1 barometer temperature **** |
       //  '-------------------------------------------'
-      $station = 1;
       $sensor = "barometer_temperature";
       $values = "time, reading";
       $db_query = "SELECT " . $values . " FROM " . $sensor .
@@ -256,11 +253,9 @@
       //echo $json_bar_temp_1;
       return $json_bar_temp_1;
     }
-  $json_bar_temp_1 = bar_temp_asjson();
-
 
   function hum_temp_asjson(){
-      global $date_query, $db_handle;
+      global $date_query, $db_handle, $station;
       //  ,-------------------------------------------,
       //  | ***************************************** |
       //  '-------------------------------------------'
@@ -269,7 +264,6 @@
       //  ,-------------------------------------------,
       //  | **** Station 1 humidity temperature ****  |
       //  '-------------------------------------------'
-      $station = 1;
       $sensor = "humidity_temperature";
       $values = "time, reading";
       $db_query = "SELECT " . $values . " FROM " . $sensor .
@@ -308,10 +302,9 @@
       // echo $json_hum_temp_1;
       return $json_hum_temp_1;
   }
-  $json_hum_temp_1 = hum_temp_asjson();
 
   function light_0_1_asjson(){
-      global $date_query, $db_handle;
+      global $date_query, $db_handle, $station;
       //  ,-------------------------------------------,
       //  | ***************************************** |
       //  '-------------------------------------------'
@@ -320,7 +313,6 @@
       //  ,-------------------------------------------,
       //  | **** Station 1 light level channel 0 **** |
       //  '-------------------------------------------'
-      $station = 1;
       $sensor = "ambient_light_0";
       $values = "time, reading";
       $db_query = "SELECT " . $values . " FROM " . $sensor .
@@ -359,7 +351,6 @@
       // echo $json_light_0_1;
       return $json_light_0_1;
   }
-   $json_light_0_1  =light_0_1_asjson();
 
 /* jmht
     //  ,-------------------------------------------,
@@ -843,6 +834,11 @@
     mysqli_close($db_handle);
 
 jmht  */
+
+$json_wat_temp_1 = water_temp_asjson();
+$json_bar_temp_1 = bar_temp_asjson();
+$json_hum_temp_1 = hum_temp_asjson();
+$json_light_0_1  = light_0_1_asjson();
 
 ?>
 
