@@ -10,22 +10,6 @@
 //  |                                                                       |
 //  | Darren Faulke (VEC).                                                  |
 //  '-----------------------------------------------------------------------'
-
-//  ,-----------------------------------------------------------------------,
-//  | This is a multi-language script that should be split up into its      |
-//  | component parts.                                                      |
-//  '-----------------------------------------------------------------------'
-
-//  ,-----------------------------------------------------------------------,
-//  | The PHP part of this script connects to the database and creates JSON |
-//  | formatted tables for use in Google Charts.                            |
-//  '-----------------------------------------------------------------------'
-
-    //  ,-----------------------------------,
-    //  | Database information.             |
-    //  | Make sure the database has this   |
-    //  | user and appropriate permissions. |
-    //  '-----------------------------------'
     $DB_HOST = "localhost";
     $DB_USER = "foo";
     $DB_PASS = "password";
@@ -54,15 +38,7 @@
     $chart_height = 300; // Google API doesn't like this!
     $chart_width = 400;  // ""
 
-    //  ,-------------------------------------------,
-    //  |  ****Initialise databse connection.****   |
-    //  '-------------------------------------------'
-
-    //  ,-------------------------------,
-    //  | Connect to the MySQL server.  |
-    //  '-------------------------------'
     $db_handle = mysqli_connect($DB_HOST,$DB_USER,$DB_PASS);
-
     if (!$db_handle)
     {
         print "Error: Unable to connect to server." . "<br>";
@@ -75,12 +51,7 @@
     //  | die("Could not connect: " . mysqli_error($db_handle));    |
     //  '-----------------------------------------------------------'
     }
-
-    //  ,-----------------------,
-    //  | Connect to database.  |
-    //  '-----------------------'
     $db_connect = mysqli_select_db($db_handle, $DB_NAME);
-
     if (!$db_connect)
     {
         print "Error: Unable to connect to database." . "<br>";
@@ -88,12 +59,6 @@
         print "Debugging error: " . mysqli_connect_db_error() . "<br>";
         exit;
     }
-
-    //  ,-------------------------------------------,
-    //  |  ***************************************  |
-    //  '-------------------------------------------'
-
-
 
 //  ,-----------------------------------------------------------------------,
 //  | This section creates JSON formatted tables for the Google Charts API. |
@@ -133,113 +98,35 @@
 //  | Once the data is transferred to the chart arrays, the     |
 //  | memory should be freed up.                                |
 //  '-----------------------------------------------------------'
-
-    //  ,---------------------------------------,
-    //  | **** Station 1 water temperature **** |
-    //  '---------------------------------------'
-
-    function water_temp_asjson(){
-        global $date_query, $db_handle, $station;
-        $sensor = "water_temperature";
-        $values = "time, reading";
-        $db_query = "SELECT " . $values . " FROM " . $sensor .
-                    " WHERE station = " . $station .
-                    " AND " . $date_query;
-
-        $db_result = mysqli_query($db_handle, $db_query);
-
-        if (!$db_result)
-        {
-            print "Error: Unable to query table." . $sensor . "<br>";
-            exit;
-        }
-        //  ,---------------------------,
-        //  | Define the table columns, |
-        //  | i.e. what the x and y     |
-        //  | data actually are.        |
-        //  '---------------------------'
-        $table = array();
-        $table['cols'] = array(
-            array('label' => 'Time',  'type' => 'datetime'),
-            array('label' => 'Water', 'type' => 'number')
-        );
-
-        $rows = array();
-        //  ,-------------------------------,
-        //  | This populates the rows,      |
-        //  | i.e. the actual x and y data. |
-        //  '-------------------------------'
-        while($r = mysqli_fetch_assoc($db_result))
-        {
-            $temp = array();
-            //  ,---------------------------,
-            //  | The MySQL datetime format |
-            //  | needs to be broken down   |
-            //  | and reformatted for       |
-            //  | Google Charts.            |
-            //  | The Javascript API months |
-            //  | start at 0, whereas MySQL |
-            //  | starts at 1!              |
-            //  '---------------------------'
-            $date1 = strtotime($r['time'] . " -1 Month");
-            $date2 = "Date(" . date("Y,m,d,H,i,s", $date1) . ")";
-            $temp[] = array('v' => $date2);
-            $temp[] = array('v' => $r['reading']);
-            $rows[] = array('c' => $temp);
-        }
-        $table['rows'] = $rows;
-        //  ,-------------------------------,
-        //  | Now encode the table into the |
-        //  | JSON format.                  |
-        //  '-------------------------------'
-
-        $json_wat_temp_1 = json_encode($table);
-        //  ,---------------------------------------,
-        //  | Uncomment to dump the entire table    |
-        //  | for debugging.                        |
-        //  '---------------------------------------'
-        // echo $json_wat_temp_1;
-        mysqli_free_result($db_result);
-        return $json_wat_temp_1;
-  }
-
-//  '---------------------------------------------------------------'
-//  | The following sensor sections are pretty much copy and pastes |
-//  | of the previous water_temperature routine so duplicate        |
-//  | commenting has been removed.                                  |
-//  '---------------------------------------------------------------'
-
-
-  function bar_temp_asjson(){
-      global $date_query, $db_handle, $station;
-      //  ,-------------------------------------------,
-      //  | **** Station 1 barometer temperature **** |
-      //  '-------------------------------------------'
-      $sensor = "barometer_temperature";
+    function sensor_data_as_json($args){
+      global $date_query, $db_handle;
+      $station = $args['station'];
+      $sensor = $args['sensor'];
       $values = "time, reading";
       $db_query = "SELECT " . $values . " FROM " . $sensor .
                   " WHERE station = " . $station .
                   " AND " . $date_query;
 
       $db_result = mysqli_query($db_handle, $db_query);
-
       if (!$db_result)
       {
           print "Error: Unable to query table." . $sensor . "<br>";
           exit;
       }
-
+      // Define the table columns, i.e. what the x and y data actually are.
       $table = array();
       $table['cols'] = array(
-          array('label' => 'Time',      'type' => 'datetime'),
-          array('label' => 'Barometer', 'type' => 'number')
+          array('label' => 'Time',  'type' => 'datetime'),
+          array('label' => $args['data_label'], 'type' => 'number')
       );
-
       $rows = array();
-
+      // This populates the rows, i.e. the actual x and y data.
       while($r = mysqli_fetch_assoc($db_result))
       {
           $temp = array();
+          /* The MySQL datetime format needs to be broken down and reformatted
+             for Google Charts.  The Javascript API months start at 0, whereas
+              MySQL starts at 1! */
           $date1 = strtotime($r['time'] . " -1 Month");
           $date2 = "Date(" . date("Y,m,d,H,i,s", $date1) . ")";
           $temp[] = array('v' => $date2);
@@ -247,439 +134,13 @@
           $rows[] = array('c' => $temp);
       }
       $table['rows'] = $rows;
-
-      $json_bar_temp_1 = json_encode($table);
+      $json_data = json_encode($table);
+      // echo $json_data; // Uncomment to dump the entire table
       mysqli_free_result($db_result);
-      //echo $json_bar_temp_1;
-      return $json_bar_temp_1;
+      return $json_data;
     }
-
-  function hum_temp_asjson(){
-      global $date_query, $db_handle, $station;
-      //  ,-------------------------------------------,
-      //  | ***************************************** |
-      //  '-------------------------------------------'
-
-
-      //  ,-------------------------------------------,
-      //  | **** Station 1 humidity temperature ****  |
-      //  '-------------------------------------------'
-      $sensor = "humidity_temperature";
-      $values = "time, reading";
-      $db_query = "SELECT " . $values . " FROM " . $sensor .
-                  " WHERE station = " . $station .
-                  " AND " . $date_query;
-
-      $db_result = mysqli_query($db_handle, $db_query);
-
-      if (!$db_result)
-      {
-          print "Error: Unable to query table." . $sensor . "<br>";
-          exit;
-      }
-
-      $table = array();
-      $table['cols'] = array(
-          array('label' => 'Time',     'type' => 'datetime'),
-          array('label' => 'Humidity', 'type' => 'number')
-      );
-
-      $rows = array();
-
-      while($r = mysqli_fetch_assoc($db_result))
-      {
-          $temp = array();
-          $date1 = strtotime($r['time'] . " -1 Month");
-          $date2 = "Date(" . date("Y,m,d,H,i,s", $date1) . ")";
-          $temp[] = array('v' => $date2);
-          $temp[] = array('v' => $r['reading']);
-          $rows[] = array('c' => $temp);
-      }
-      $table['rows'] = $rows;
-
-      $json_hum_temp_1 = json_encode($table);
-      mysqli_free_result($db_result);
-      // echo $json_hum_temp_1;
-      return $json_hum_temp_1;
-  }
-
-  function light_0_1_asjson(){
-      global $date_query, $db_handle, $station;
-      //  ,-------------------------------------------,
-      //  | ***************************************** |
-      //  '-------------------------------------------'
-
-
-      //  ,-------------------------------------------,
-      //  | **** Station 1 light level channel 0 **** |
-      //  '-------------------------------------------'
-      $sensor = "ambient_light_0";
-      $values = "time, reading";
-      $db_query = "SELECT " . $values . " FROM " . $sensor .
-                  " WHERE station = " . $station .
-                  " AND " . $date_query;
-
-      $db_result = mysqli_query($db_handle, $db_query);
-
-      if (!$db_result)
-      {
-          print "Error: Unable to query table." . $sensor . "<br>";
-          exit;
-      }
-
-      $table = array();
-      $table['cols'] = array(
-          array('label' => 'Time',      'type' => 'datetime'),
-          array('label' => 'Channel 0', 'type' => 'number')
-      );
-
-      $rows = array();
-
-      while($r = mysqli_fetch_assoc($db_result))
-      {
-          $temp = array();
-          $date1 = strtotime($r['time'] . " -1 Month");
-          $date2 = "Date(" . date("Y,m,d,H,i,s", $date1) . ")";
-          $temp[] = array('v' => $date2);
-          $temp[] = array('v' => $r['reading']);
-          $rows[] = array('c' => $temp);
-      }
-      $table['rows'] = $rows;
-
-      $json_light_0_1 = json_encode($table);
-      mysqli_free_result($db_result);
-      // echo $json_light_0_1;
-      return $json_light_0_1;
-  }
 
 /* jmht
-    //  ,-------------------------------------------,
-    //  | ***************************************** |
-    //  '-------------------------------------------'
-
-
-    //  ,-------------------------------------------,
-    //  | **** Station 1 light level channel 1 **** |
-    //  '-------------------------------------------'
-    $station = 1;
-    $sensor = "ambient_light_1";
-    $values = "time, reading";
-    $db_query = "SELECT " . $values . " FROM " . $sensor .
-                " WHERE station = " . $station .
-                " AND " . $date_query;
-
-    $db_result = mysqli_query($db_handle, $db_query);
-
-    if (!$db_result)
-    {
-        print "Error: Unable to query table." . $sensor . "<br>";
-        exit;
-    }
-
-    $table = array();
-    $table['cols'] = array(
-        array('label' => 'Time',      'type' => 'datetime'),
-        array('label' => 'Channel 1', 'type' => 'number')
-    );
-
-    $rows = array();
-
-    while($r = mysqli_fetch_assoc($db_result))
-    {
-        $temp = array();
-        $date1 = strtotime($r['time'] . " -1 Month");
-        $date2 = "Date(" . date("Y,m,d,H,i,s", $date1) . ")";
-        $temp[] = array('v' => $date2);
-        $temp[] = array('v' => $r['reading']);
-        $rows[] = array('c' => $temp);
-    }
-    $table['rows'] = $rows;
-
-    $json_light_1_1 = json_encode($table);
-    mysqli_free_result($db_result);
-    // echo $json_light_1_1;
-
-    //  ,-------------------------------------------,
-    //  | ***************************************** |
-    //  '-------------------------------------------'
-
-
-    //  ,-------------------------------------------,
-    //  |       **** Station 1 humidity ****        |
-    //  '-------------------------------------------'
-    $station = 1;
-    $sensor = "humidity_humidity";
-    $values = "time, reading";
-    $db_query = "SELECT " . $values . " FROM " . $sensor .
-                " WHERE station = " . $station .
-                " AND " . $date_query;
-
-    $db_result = mysqli_query($db_handle, $db_query);
-
-    if (!$db_result)
-    {
-        print "Error: Unable to query table." . $sensor . "<br>";
-        exit;
-    }
-
-    $table = array();
-    $table['cols'] = array(
-        array('label' => 'Time',     'type' => 'datetime'),
-        array('label' => 'Humidity', 'type' => 'number')
-    );
-
-    $rows = array();
-
-    while($r = mysqli_fetch_assoc($db_result))
-    {
-        $temp = array();
-        $date1 = strtotime($r['time'] . " -1 Month");
-        $date2 = "Date(" . date("Y,m,d,H,i,s", $date1) . ")";
-        $temp[] = array('v' => $date2);
-        $temp[] = array('v' => $r['reading']);
-        $rows[] = array('c' => $temp);
-    }
-    $table['rows'] = $rows;
-
-    $json_humidity_1 = json_encode($table);
-    mysqli_free_result($db_result);
-    // echo $json_humidity_1;
-
-    //  ,-------------------------------------------,
-    //  | ***************************************** |
-    //  '-------------------------------------------'
-
-
-    //  ,-------------------------------------------,
-    //  | **** Station 2 barometer temperature **** |
-    //  '-------------------------------------------'
-    $station = 2;
-    $sensor = "barometer_temperature";
-    $values = "time, reading";
-    $db_query = "SELECT " . $values . " FROM " . $sensor .
-                " WHERE station = " . $station .
-                " AND " . $date_query;
-
-    $db_result = mysqli_query($db_handle, $db_query);
-
-    if (!$db_result)
-    {
-        print "Error: Unable to query table." . $sensor . "<br>";
-        exit;
-    }
-
-    $table = array();
-    $table['cols'] = array(
-        array('label' => 'Time',      'type' => 'datetime'),
-        array('label' => 'Barometer', 'type' => 'number')
-    );
-
-    $rows = array();
-
-    while($r = mysqli_fetch_assoc($db_result))
-    {
-        $temp = array();
-        $date1 = strtotime($r['time'] . " -1 Month");
-        $date2 = "Date(" . date("Y,m,d,H,i,s", $date1) . ")";
-        $temp[] = array('v' => $date2);
-        $temp[] = array('v' => $r['reading']);
-        $rows[] = array('c' => $temp);
-    }
-    $table['rows'] = $rows;
-
-    $json_bar_temp_2 = json_encode($table);
-    mysqli_free_result($db_result);
-    // echo $json_bar_temp_2;
-
-    //  ,-------------------------------------------,
-    //  | ***************************************** |
-    //  '-------------------------------------------'
-
-
-    //  ,-------------------------------------------,
-    //  | **** Station 2 humidity temperature ****  |
-    //  '-------------------------------------------'
-    $station = 2;
-    $sensor = "humidity_temperature";
-    $values = "time, reading";
-    $db_query = "SELECT " . $values . " FROM " . $sensor .
-                " WHERE station = " . $station .
-                " AND " . $date_query;
-
-    $db_result = mysqli_query($db_handle, $db_query);
-
-    if (!$db_result)
-    {
-        print "Error: Unable to query table." . $sensor . "<br>";
-        exit;
-    }
-
-    $table = array();
-    $table['cols'] = array(
-        array('label' => 'Time',     'type' => 'datetime'),
-        array('label' => 'Humidity', 'type' => 'number')
-    );
-
-    $rows = array();
-
-    while($r = mysqli_fetch_assoc($db_result))
-    {
-        $temp = array();
-        $date1 = strtotime($r['time'] . " -1 Month");
-        $date2 = "Date(" . date("Y,m,d,H,i,s", $date1) . ")";
-        $temp[] = array('v' => $date2);
-        $temp[] = array('v' => $r['reading']);
-        $rows[] = array('c' => $temp);
-    }
-    $table['rows'] = $rows;
-
-    $json_hum_temp_2 = json_encode($table);
-    mysqli_free_result($db_result);
-    // echo $json_hum_temp_2;
-
-    //  ,-------------------------------------------,
-    //  | ***************************************** |
-    //  '-------------------------------------------'
-
-
-    //  ,-------------------------------------------,
-    //  | **** Station 2 light level channel 0 **** |
-    //  '-------------------------------------------'
-    $station = 2;
-    $sensor = "ambient_light_0";
-    $values = "time, reading";
-    $db_query = "SELECT " . $values . " FROM " . $sensor .
-                " WHERE station = " . $station .
-                " AND " . $date_query;
-
-    $db_result = mysqli_query($db_handle, $db_query);
-
-    if (!$db_result)
-    {
-        print "Error: Unable to query table." . $sensor . "<br>";
-        exit;
-    }
-
-    $table = array();
-    $table['cols'] = array(
-        array('label' => 'Time',      'type' => 'datetime'),
-        array('label' => 'Channel 0', 'type' => 'number')
-    );
-
-    $rows = array();
-
-    while($r = mysqli_fetch_assoc($db_result))
-    {
-        $temp = array();
-        $date1 = strtotime($r['time'] . " -1 Month");
-        $date2 = "Date(" . date("Y,m,d,H,i,s", $date1) . ")";
-        $temp[] = array('v' => $date2);
-        $temp[] = array('v' => $r['reading']);
-        $rows[] = array('c' => $temp);
-    }
-    $table['rows'] = $rows;
-
-    $json_light_0_2 = json_encode($table);
-    mysqli_free_result($db_result);
-    // echo $json_light_0_2;
-
-    //  ,-------------------------------------------,
-    //  | ***************************************** |
-    //  '-------------------------------------------'
-
-
-    //  ,-------------------------------------------,
-    //  | **** Station 2 light level channel 1 **** |
-    //  '-------------------------------------------'
-    $station = 2;
-    $sensor = "ambient_light_1";
-    $values = "time, reading";
-    $db_query = "SELECT " . $values . " FROM " . $sensor .
-                " WHERE station = " . $station .
-                " AND " . $date_query;
-
-    $db_result = mysqli_query($db_handle, $db_query);
-
-    if (!$db_result)
-    {
-        print "Error: Unable to query table." . $sensor . "<br>";
-        exit;
-    }
-
-    $table = array();
-    $table['cols'] = array(
-        array('label' => 'Time',      'type' => 'datetime'),
-        array('label' => 'Channel 1', 'type' => 'number')
-    );
-
-    $rows = array();
-
-    while($r = mysqli_fetch_assoc($db_result))
-    {
-        $temp = array();
-        $date1 = strtotime($r['time'] . " -1 Month");
-        $date2 = "Date(" . date("Y,m,d,H,i,s", $date1) . ")";
-        $temp[] = array('v' => $date2);
-        $temp[] = array('v' => $r['reading']);
-        $rows[] = array('c' => $temp);
-    }
-    $table['rows'] = $rows;
-
-    $json_light_1_2 = json_encode($table);
-    mysqli_free_result($db_result);
-    // echo $json_light_1_2;
-
-    //  ,-------------------------------------------,
-    //  | ***************************************** |
-    //  '-------------------------------------------'
-
-
-    //  ,-------------------------------------------,
-    //  |       **** Station 2 humidity ****        |
-    //  '-------------------------------------------'
-    $station = 2;
-    $sensor = "humidity_humidity";
-    $values = "time, reading";
-    $db_query = "SELECT " . $values . " FROM " . $sensor .
-                " WHERE station = " . $station .
-                " AND " . $date_query;
-
-    $db_result = mysqli_query($db_handle, $db_query);
-
-    if (!$db_result)
-    {
-        print "Error: Unable to query table." . $sensor . "<br>";
-        exit;
-    }
-
-    $table = array();
-    $table['cols'] = array(
-        array('label' => 'Time',     'type' => 'datetime'),
-        array('label' => 'Humidity', 'type' => 'number')
-    );
-
-    $rows = array();
-
-    while($r = mysqli_fetch_assoc($db_result))
-    {
-        $temp = array();
-        $date1 = strtotime($r['time'] . " -1 Month");
-        $date2 = "Date(" . date("Y,m,d,H,i,s", $date1) . ")";
-        $temp[] = array('v' => $date2);
-        $temp[] = array('v' => $r['reading']);
-        $rows[] = array('c' => $temp);
-    }
-    $table['rows'] = $rows;
-
-    $json_humidity_2 = json_encode($table);
-    mysqli_free_result($db_result);
-    // echo $json_humidity_2;
-
-//  ,-------------------------------------------,
-//  | ***************************************** |
-//  '-------------------------------------------'
-
-
 //  ,-----------------------------------------------------------,
 //  | This is an attempt to use database JOIN and UNION queries |
 //  | to consolidate data from multiple tables so that readings |
@@ -834,12 +295,35 @@
     mysqli_close($db_handle);
 
 jmht  */
+$args = array('sensor' => 'water_temperature',
+              'station' => $station,
+              'data_label' => 'Temp');
+$json_wat_temp_1 = sensor_data_as_json($args);
 
-$json_wat_temp_1 = water_temp_asjson();
-$json_bar_temp_1 = bar_temp_asjson();
-$json_hum_temp_1 = hum_temp_asjson();
-$json_light_0_1  = light_0_1_asjson();
+$args = array('sensor' => 'barometer_temperature',
+              'station' => $station,
+              'data_label' => 'Barometer');
+$json_bar_temp_1 = sensor_data_as_json($args);
 
+$args = array('sensor' => 'humidity_temperature',
+              'station' => $station,
+              'data_label' => 'Humidity');
+$json_hum_temp_1 = sensor_data_as_json($args);
+
+$args = array('sensor' => 'ambient_light_0',
+              'station' => $station,
+              'data_label' => 'Channel 0');
+$json_light_0_1 = sensor_data_as_json($args);
+
+$args = array('sensor' => 'ambient_light_1',
+              'station' => $station,
+              'data_label' => 'Channel 1');
+$json_light_1_1 = sensor_data_as_json($args);
+
+$args = array('sensor' => 'humidity_humidity',
+              'station' => $station,
+              'data_label' => 'Humidity');
+$json_humidity_1 = sensor_data_as_json($args);
 ?>
 
 
@@ -873,13 +357,8 @@ $json_light_0_1  = light_0_1_asjson();
         google.charts.setOnLoadCallback(barometer_temp_station_1);
         google.charts.setOnLoadCallback(humidity_temp_station_1);
         google.charts.setOnLoadCallback(light_channel0_station_1);
-        // google.charts.setOnLoadCallback(light_channel1_station_1);
-        // google.charts.setOnLoadCallback(humidity_station_1);
-        // google.charts.setOnLoadCallback(barometer_temp_station_2);
-        // google.charts.setOnLoadCallback(humidity_temp_station_2);
-        // google.charts.setOnLoadCallback(light_channel0_station_2);
-        // google.charts.setOnLoadCallback(light_channel1_station_2);
-        // google.charts.setOnLoadCallback(humidity_station_2);
+        google.charts.setOnLoadCallback(light_channel1_station_1);
+        google.charts.setOnLoadCallback(humidity_station_1);
 <!--//  ,-------------------------------------------------------,   -->
 <!--//  | Attempts to merge database tables to show multiple    |   -->
 <!--//  | data curves on a single chart.                        |   -->
@@ -957,7 +436,6 @@ $json_light_0_1  = light_0_1_asjson();
             chart.draw(data, options);
         }
 
-/* jmht
         function light_channel1_station_1()
         {
             var data = new google.visualization.DataTable(<?=$json_light_1_1?>);
@@ -988,81 +466,7 @@ $json_light_0_1  = light_0_1_asjson();
             chart.draw(data, options);
         }
 
-        function barometer_temp_station_2()
-        {
-            var data = new google.visualization.DataTable(<?=$json_bar_temp_2?>);
-            var options =
-            {
-                theme: "material",
-                title: "Barometer temperature for station 2 (°C)",
-                legend: { position: "right" },
-                vAxis:  { format: "##.#"  },
-                hAxis:  { format: "EEEE HH:mm" }
-            };
-            var chart = new google.visualization.LineChart(document.getElementById('bar_temp_2'));
-            chart.draw(data, options);
-        }
-
-        function humidity_temp_station_2()
-        {
-            var data = new google.visualization.DataTable(<?=$json_hum_temp_2?>);
-            var options =
-            {
-                theme: "material",
-                title: "Humidity temperature for station 2 (°C)",
-                legend: { position: "right" },
-                vAxis:  { format: "##.#"  },
-                hAxis:  { format: "EEEE HH:mm" }
-            };
-            var chart = new google.visualization.LineChart(document.getElementById('hum_temp_2'));
-            chart.draw(data, options);
-        }
-
-        function light_channel0_station_2()
-        {
-            var data = new google.visualization.DataTable(<?=$json_light_0_2?>);
-            var options =
-            {
-                theme: "material",
-                title: "Ambient light (channel 0) for station 2 (lx)",
-                legend: { position: "right" },
-                vAxis:  { format: "##.#"  },
-                hAxis:  { format: "EEEE HH:mm" }
-            };
-            var chart = new google.visualization.LineChart(document.getElementById('light_0_2'));
-            chart.draw(data, options);
-        }
-
-        function light_channel1_station_2()
-        {
-            var data = new google.visualization.DataTable(<?=$json_light_1_2?>);
-            var options =
-            {
-                theme: "material",
-                title: "Ambient light (channel 1) for station 2 (lx)",
-                legend: { position: "right" },
-                vAxis:  { format: "##.#"  },
-                hAxis:  { format: "EEEE HH:mm" }
-            };
-            var chart = new google.visualization.LineChart(document.getElementById('light_1_2'));
-            chart.draw(data, options);
-        }
-
-        function humidity_station_2()
-        {
-            var data = new google.visualization.DataTable(<?=$json_humidity_2?>);
-            var options =
-            {
-                theme: "material",
-                title: "Humidity for station 2 (%)",
-                legend: { position: "right" },
-                vAxis:  { format: "##.#"  },
-                hAxis:  { format: "EEEE HH:mm" }
-            };
-            var chart = new google.visualization.LineChart(document.getElementById('humidity_2'));
-            chart.draw(data, options);
-        }
-
+/* jmht
         function all_temp_station_1()
         {
             var data = new google.visualization.DataTable(<?=$json_all_temp_1?>);
@@ -1116,16 +520,9 @@ $json_light_0_1  = light_0_1_asjson();
     <div id="hum_temp_1"   style="width: 600px; height: 400px"></div>
     <p>Classic style API using a Material theme.</p>
     <div id="light_0_1"    style="width: 600px; height: 400px"></div>
-<!--
     <div id="light_1_1"    style="width: 600px; height: 400px"></div>
     <div id="humidity_1"   style="width: 600px; height: 400px"></div>
-
-    <div id="bar_temp_2"   style="width: 600px; height: 400px"></div>
-    <div id="hum_temp_2"   style="width: 600px; height: 400px"></div>
-    <div id="light_0_2"    style="width: 600px; height: 400px"></div>
-    <div id="light_1_2"    style="width: 600px; height: 400px"></div>
-    <div id="humidity_2"   style="width: 600px; height: 400px"></div>
-
+<!--
     <div id="all_temp_1"   style="width: 600px; height: 400px"></div>
     <div id="all_light_1"  style="width: 600px; height: 400px"></div>
 -->
