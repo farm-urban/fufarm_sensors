@@ -324,6 +324,11 @@ $args = array('sensor' => 'humidity_humidity',
               'station' => $station,
               'data_label' => 'Humidity');
 $json_humidity_1 = sensor_data_as_json($args);
+
+// Not sure why this required
+$json_all_temp_1 = NULL;
+$json_all_light_1 = NULL;
+$graph_data_json = NULL;
 ?>
 
 
@@ -365,6 +370,21 @@ $json_humidity_1 = sensor_data_as_json($args);
 <!--//  '-------------------------------------------------------'   -->
         // google.charts.setOnLoadCallback(all_temp_station_1);
         // google.charts.setOnLoadCallback(all_light_station_1);
+
+        function draw_graph(graph_options) {
+          // WORK IN PROGRESS
+          graph_data =  {};
+          var data = new google.visualization.DataTable(graph_data);
+          var options =
+          {
+              title: "Water temperature for station 1 (°C)",
+              legend: { position: "right" },
+              vAxis:  { format: "##.#"  },
+              hAxis:  { format: "EEEE HH:mm" }
+          };
+          var chart = new google.visualization.LineChart(document.getElementById('water_temp_1'));
+          chart.draw(data, options);
+        }
 
         function water_temp_station_1()
         {
