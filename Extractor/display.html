@@ -1,0 +1,40 @@
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+        <script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+        <script type="text/javascript">
+
+<!--//  | Material style charts - newer but limited customisation.  |   -->
+        google.charts.load('current', {'packages':['line']});
+
+<!--//  | Classic style charts - more customisations but longevity? |   -->
+        google.charts.load('current', {'packages':['corechart']});
+
+        google.charts.setOnLoadCallback(getData);
+
+        function getData() {
+          var request = new XMLHttpRequest();
+          request.open('GET', 'http://www.foo.co.uk/get_data.php?days=200', true);
+          request.onload = function() {
+            var json_data = JSON.parse(this.response);
+            var data = new google.visualization.DataTable(json_data);
+            var options =
+            {
+                title: "Water temperature for station 1 (°C)",
+                legend: { position: "right" },
+                vAxis:  { format: "##.#"  },
+                hAxis:  { format: "EEEE HH:mm" }
+            };
+            var chart = new google.visualization.LineChart(document.getElementById('graph_div_1'));
+            chart.draw(data, options);
+          }
+          request.send();
+        }
+    </script>
+</head>
+<body>
+    <p>Classic style API.</p>
+    <div id="graph_div_1" style="width: 600px; height: 400px"></div>
+</body>
+</html>
