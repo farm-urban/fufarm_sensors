@@ -15,16 +15,18 @@
 
         function getData() {
           var request = new XMLHttpRequest();
-          request.open('GET', 'http://www.foo.co.uk/get_data.php?days=200', true);
+          request.open('GET', 'http://www.foo.co.uk/get_data.php?days=200&time_as_int=1', true);
           request.onload = function() {
             var json_data = JSON.parse(this.response);
             var data = new google.visualization.DataTable(json_data);
+            var dformat = "d/MM HH:mm";
+            var dformat = '##';
             var options =
             {
                 title: "Water temperature for station 1 (°C)",
-                legend: { position: "right" },
-                vAxis:  { format: "##.#"  },
-                hAxis:  { format: "EEEE HH:mm" }
+                legend: {position: "right"},
+                vAxis:  {format: "##.#"},
+                hAxis:  {format: dformat}
             };
             var chart = new google.visualization.LineChart(document.getElementById('graph_div_1'));
             chart.draw(data, options);

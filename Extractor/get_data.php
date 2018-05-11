@@ -1,6 +1,6 @@
 <?php
 
-function sensor_data_as_json($station, $sensor, $date_query){
+function sensor_data_as_json($station, $sensor, $date_query, $time_as_int){
   global $date_query, $db_handle;
   $values = "time, reading";
   $db_query = "SELECT " . $values . " FROM " . $sensor .
@@ -15,23 +15,30 @@ function sensor_data_as_json($station, $sensor, $date_query){
   }
   // Define the table columns, i.e. what the x and y data actually are.
   $table = array();
+  $time_type = ($time_as_int ? 'number': "datetime");
   $table['cols'] = array(
-      array('label' => 'Time',  'type' => 'datetime'),
+      array('label' => 'Time',  'type' => $time_type),
       array('label' => 'Reading', 'type' => 'number')
   );
   $rows = array();
   // This populates the rows, i.e. the actual x and y data.
+  $i = 0;
   while($r = mysqli_fetch_assoc($db_result))
   {
       $temp = array();
       /* The MySQL datetime format needs to be broken down and reformatted
          for Google Charts.  The Javascript API months start at 0, whereas
           MySQL starts at 1! */
-      $date1 = strtotime($r['time'] . " -1 Month");
-      $date2 = "Date(" . date("Y,m,d,H,i,s", $date1) . ")";
-      $temp[] = array('v' => $date2);
+      if ($time_as_int) {
+        $temp[] = array('v' => $i);
+      } else {
+        $date1 = strtotime($r['time'] . " -1 Month");
+        $date2 = "Date(" . date("Y,m,d,H,i,s", $date1) . ")";
+        $temp[] = array('v' => $date2);
+      }
       $temp[] = array('v' => $r['reading']);
       $rows[] = array('c' => $temp);
+      $i++;
   }
   $table['rows'] = $rows;
   $json_data = json_encode($table);
@@ -54,6 +61,10 @@ function sensor_data_as_json($station, $sensor, $date_query){
   $station = (isset($_REQUEST["station"]) ? $_REQUEST["station"]: "1");
   $sensor = (isset($_REQUEST["sensor"]) ? $_REQUEST["sensor"]: "water_temperature");
   $days = (isset($_REQUEST["days"]) ? $_REQUEST["days"]: "5");
+  $time_as_int = false;
+  if (isset($_REQUEST["time_as_int"])) {
+    $time_as_int = true;
+  }
   $end_date = "NOW()";
   $start_date = "SUBDATE(NOW(), " . $days . ")";
   $date_query = " time BETWEEN " . $start_date . " AND " . $end_date;
@@ -81,5 +92,5 @@ function sensor_data_as_json($station, $sensor, $date_query){
     }
 
     header('Content-type: application/json');
-    echo sensor_data_as_json($station, $sensor, $date_query);
+    echo sensor_data_as_json($station, $sensor, $date_query, $time_as_int);
 ?>

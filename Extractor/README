@@ -11,8 +11,8 @@ php -r "if (hash_file('SHA384', 'composer-setup.php') === '544e09ee996cdf60ece38
 Now install composer:
 php composer-setup.php --install-dir=. --filename=composer
 
-Install dependencies into vendor directory
+Install dependencies into vendor directory (uses composes.json):
 php ./composer install
 
-Run test
+Run tests:
 php vendor/bin/phpunit test.php

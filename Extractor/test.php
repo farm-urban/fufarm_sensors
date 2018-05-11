@@ -19,6 +19,7 @@ class DisplayTest extends PHPUnit_Framework_TestCase
             'query' => [
                 'station' => '1',
                 'days' => '200',
+                'time_as_int' => '1',
             ]
         ]);
 
@@ -27,8 +28,11 @@ class DisplayTest extends PHPUnit_Framework_TestCase
         //echo "BODY IS:" . $response->getBody() . "\n";
         $data = json_decode($response->getBody(), true);
 
-        echo "COLS ARE:" . print_r($data['cols'], true) . "\n";
-        echo "ROWS ARE:" . print_r(array_slice($data['rows'], 0, 5), true) . "\n";
+        // echo "COLS ARE:" . print_r($data['cols'], true) . "\n";
+        // echo "ROWS1 ARE:" . print_r(array_slice($data['rows'], 0, 1), true) . "\n";
+        // $len = count($data['rows']);
+        // echo "ROWS2 ARE:" . print_r(array_slice($data['rows'], $len-1, $len), true) . "\n";
+        print_r($data['rows']);
         //$this->assertArrayHasKey('bookId', $data);
         //$this->assertEquals(42, $data['price']);
     }
