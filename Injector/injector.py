@@ -53,4 +53,8 @@ def main(serial_config=None, socket_config=None, database=None,
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
-    main()
+    main(serial_config={
+        'port': '/dev/cu.usbmodemPy5a3af1',
+        'baudrate': 9600,
+        'bytesize' : 8
+        })

@@ -97,35 +97,16 @@ RED = 0xff0000
 BLUE = 0x0000ff
 BLACK = 0x000000
 
-# =============================================================================
-# Initialisation.
-# =============================================================================
-pycom.heartbeat(False)  # Turn off pulsing LED heartbeat.
+UART = None
+SOCK = None
 
-chrono = Timer.Chrono()
-if DATA_OVER_USB:
-    #os.dupterm(None) # Kill the REPL?
-    BUS = 0
-    BAUDRATE = 9600
-    uart = UART(BUS, BAUDRATE)
-    uart.init(BAUDRATE, bits=8, parity=None, stop=1)
-else:
-    wlan = WLAN(mode=WLAN.STA)
+def status(message):
+    OUTFILE = 'STATUS'
+    with open(OUTFILE, mode='w') as w:
+        w.write(message + '\n')
 
-#   ,-----------------------------------------------------------,
-#   | If there are multiple stations then we need a unique      |
-#   | identity so we can chart the data specific to it. We can  |
-#   | use the mac address for this so that this code can be     |
-#   | used without modifying it for each station.               |
-#   '-----------------------------------------------------------'
-station_mac = binascii.hexlify(machine.unique_id())
-#station_mac = machine.unique_id()
-logger.info("Station MAC = %s.", station_mac.decode())
-
-# -----------------------------------------------------------------------------
-# Connect to access point.
-# -----------------------------------------------------------------------------
 def connect_to_network():
+    """Connect to access point"""
     if STATIC_IP:
         info_str = """
 Using static IP address with:
@@ -165,9 +146,16 @@ DNS server  : {3}""".format(NETWORK_IP, NETWORK_MASK, NETWORK_GATEWAY, NETWORK_D
     chrono.stop()
 #if wlan.isconnected():
 #    wlan.disconnect
+    return
 
-if not DATA_OVER_USB:
-    connect_to_network()
+def setup_serial():
+    #os.dupterm(None) # Kill the REPL?
+    BUS = 0
+    BAUDRATE = 9600
+    UART = machine.UART(BUS, BAUDRATE)
+    UART.init(BAUDRATE, bits=8, parity=None, stop=1)
+
+def setup_socket():
     # Connection keeps dropping.
     if not wlan.isconnected():
         logger.info("Couldn't connect to access point.")
@@ -186,11 +174,29 @@ DNS server  : {3}""".format(ip, mask, gateway, dns)
     time.sleep(1)
     logger.info("Trying to create a network socket.")
     try:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        SOCK = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         logger.info("Socket created.")
     except Exception as e:
         logger.critical("Failed to create socket - quitting.%s", e)
         error = True
         pycom.rgbled(RED)
         sys.exit()
-    sock.setblocking(False)
+    SOCK.setblocking(False)
+    return
+
+# Initialisation.
+pycom.heartbeat(False)  # Turn off pulsing LED heartbeat.
+chrono = Timer.Chrono()
+STATION_MAC = binascii.hexlify(machine.unique_id())
+status("START OF BOOT")
+logger.info("Station MAC = %s.", STATION_MAC.decode())
+if DATA_OVER_USB:
+    setup_serial()
+else:
+    wlan = WLAN(mode=WLAN.STA)
+    connect_to_network()
+    setup_socket()
+
+status("END OF BOOT")
+
+# with open('STATUS') as f: print(f.readlines())

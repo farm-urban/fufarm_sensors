@@ -37,7 +37,6 @@ from machine import Pin
 from onewire import OneWire
 from onewire import DS18X20     # Liquid temperature.
 
-
 def get_time():
     """
 #   | The RTC module can set time directly from an NTP server   |
@@ -57,8 +56,8 @@ Revised time is {2}""".format(NTP_ADDRESS, old_time, new_time)
         logger.info(out_str)
     else:
         packet = "ntp"
-        sock.sendto(packet, HOST_ADDRESS)
-        ntp_time, ip_from = sock.recvfrom(512)
+        SOCK.sendto(packet, HOST_ADDRESS)
+        ntp_time, ip_from = SOCK.recvfrom(512)
         dec_time = ntp_time.decode('utf-8')
         set_time = tuple(map(int, dec_time.split(",")))
         RTC.init(set_time)
@@ -75,9 +74,9 @@ def send_data(sensor, value):
     packet = struct.pack("@12sHf", STATION_MAC, sensor, value)
     logger.info("Sent {} bytes.\nData packet = {}".format(len(packet), packet))
     if DATA_OVER_USB:
-        uart.write(packet)
+        UART.write(packet)
     else:
-        sock.sendto(packet, HOST_ADDRESS)
+        SOCK.sendto(packet, HOST_ADDRESS)
     time.sleep(1)
 
 def take_readings():
