@@ -24,28 +24,22 @@
 
 # Sets up database and macros.
 
-import pycom
+import binascii
+import logging
 import machine
-import time
+import pycom
 import socket
 import struct
 import sys
-import binascii
+import time
+
 
 from network import WLAN
 from machine import Timer
 from machine import UART
 
-import logging
 logging.basicConfig(level=logging.CRITICAL)
 logger = logging.getLogger(__name__)
-logger.critical("Critical")
-
-# =============================================================================
-# Debugging and output.
-# =============================================================================
-PRINT_DEBUG = False     # Print debugging output.
-PRINT_OUTPUT = False     # Print informational output.
 
 # =============================================================================
 # Networking.
@@ -70,12 +64,7 @@ HOST_ADDRESS    = (HOST_NAME, HOST_PORT)
 NTP_AVAILABLE   = False             # NTP server available?
 NTP_ADDRESS     = 'pool.ntp.org'    # Address of open NTP server.
 
-# jmht - send data over the USB cable rather then wifi
-DATA_OVER_USB = True
-
-# =============================================================================
-# Sensor intervals.
-# =============================================================================
+DATA_OVER_USB = True # jmht - send data over the USB cable rather then wifi
 SENSOR_INTERVAL = 0.2 # Minutes.
 
 # =============================================================================
@@ -102,24 +91,20 @@ SENSOR_INTERVAL = 0.2 # Minutes.
 # =============================================================================
 # Colour definitions for LED.
 # =============================================================================
-GREEN = 0x00ff00 # Green.
-AMBER = 0xff8000 # Amber.
-RED   = 0xff0000 # Red.
-BLUE  = 0x0000ff # Blue.
-BLACK = 0x000000 # Black.
+GREEN = 0x00ff00
+AMBER = 0xff8000
+RED = 0xff0000
+BLUE = 0x0000ff
+BLACK = 0x000000
 
 # =============================================================================
 # Initialisation.
 # =============================================================================
-# -----------------------------------------------------------------------------
-# Turn of Pycom heartbeat.
-# -----------------------------------------------------------------------------
 pycom.heartbeat(False)  # Turn off pulsing LED heartbeat.
 
 chrono = Timer.Chrono()
 if DATA_OVER_USB:
-    # Kill the REPL?
-    #os.dupterm(None)
+    #os.dupterm(None) # Kill the REPL?
     BUS = 0
     BAUDRATE = 9600
     uart = UART(BUS, BAUDRATE)
@@ -135,42 +120,32 @@ else:
 #   '-----------------------------------------------------------'
 station_mac = binascii.hexlify(machine.unique_id())
 #station_mac = machine.unique_id()
-if PRINT_OUTPUT:
-    print("Station MAC = {}.".format(station_mac.decode()))
+logger.info("Station MAC = %s.", station_mac.decode())
 
 # -----------------------------------------------------------------------------
 # Connect to access point.
 # -----------------------------------------------------------------------------
 def connect_to_network():
-
     if STATIC_IP:
-        if PRINT_OUTPUT:
-            print("Using static IP address with:")
-            print("\tIP          : {}".format(NETWORK_IP))
-            print("\tSubnet mask : {}".format(NETWORK_MASK))
-            print("\tGateway     : {}".format(NETWORK_GATEWAY))
-            print("\tDNS server  : {}".format(NETWORK_DNS))
-            print()
+        info_str = """
+Using static IP address with:
+IP          : {0}
+Subnet mask : {1}
+Gateway     : {2}
+DNS server  : {3}""".format(NETWORK_IP, NETWORK_MASK, NETWORK_GATEWAY, NETWORK_DNS)
+        logger.info(info_str)
         wlan.ifconfig(config=NETWORK_CONFIG)
     else:
-        if PRINT_OUTPUT:
-            print("IP address will be assigned via DHCP.")
+        logger.info("IP address will be assigned via DHCP.")
 
-    if PRINT_OUTPUT:
-        print("Looking for access point.", end="")
-
+    logger.info("Looking for access point.", end="")
     nets = wlan.scan()
     for net in nets:
-        if PRINT_OUTPUT:
-            print(".", end="")
+        logger.info(".")
         if net.ssid == NETWORK_SSID:
-            if PRINT_OUTPUT:
-                print("\nFound {} access point!".format(NETWORK_SSID))
+            logger.info("Found %s access point!", NETWORK_SSID)
             break
-
-    if PRINT_OUTPUT:
-        print("Connecting", end="")
-
+    logger.info("Connecting")
 #   ,-----------------------------------------------------------,
 #   | The wlan.connect timeout doesn't actually do anything so  |
 #   | an alternative timeout method has been implemented.       |
@@ -182,63 +157,40 @@ def connect_to_network():
     start_scan = start_loop
     while not wlan.isconnected():
         if chrono.read() - start_scan >= NETWORK_TIMEOUT:
-            error = True
+            logger.critical("Timout on network connect.")
             break
         if chrono.read() - start_loop >= NETWORK_TIMEOUT / 50:
             start_loop = chrono.read()
-            if PRINT_OUTPUT:
-                print(".", end="")
-
+            logger.info(".")
     chrono.stop()
-# -----------------------------------------------------------------------------
-
 #if wlan.isconnected():
 #    wlan.disconnect
 
 if not DATA_OVER_USB:
     connect_to_network()
-
-    # -----------------------------------------------------------------------------
-    # End if unable to connect.
-    # -----------------------------------------------------------------------------
     # Connection keeps dropping.
     if not wlan.isconnected():
-        if PRINT_OUTPUT:
-            print("\nCouldn't connect to access point.")
+        logger.info("Couldn't connect to access point.")
         pycom.rgbled(RED)
         sys.exit(1)
 
-    if PRINT_OUTPUT:
-        print("")
-        print("\nSuccessfully connected to network.")
-
-    # -----------------------------------------------------------------------------
-    # Print network info.
-    # -----------------------------------------------------------------------------
-    if PRINT_OUTPUT:
-        print("Network config:\n")
-        ip, mask, gateway, dns = wlan.ifconfig()
-        print("\tIP          : {}".format(ip))
-        print("\tSubnet mask : {}".format(mask))
-        print("\tGateway     : {}".format(gateway))
-        print("\tDNS server  : {}".format(dns))
-        print()
-        time.sleep(1)
-
-    # -----------------------------------------------------------------------------
-    # Create network socket.
-    # -----------------------------------------------------------------------------
-    if PRINT_OUTPUT:
-        print("Trying to create a network socket.")
+    ip, mask, gateway, dns = wlan.ifconfig()
+    info_str = """
+Successfully connected to network.
+Network config:
+IP          : {0}
+Subnet mask : {1}
+Gateway     : {2}
+DNS server  : {3}""".format(ip, mask, gateway, dns)
+    logger.info(info_str)
+    time.sleep(1)
+    logger.info("Trying to create a network socket.")
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        if PRINT_OUTPUT:
-            print("Socket created.\n")
-    except:
-        if PRINT_OUTPUT:
-            print("Failed to create socket - quitting.\n")
+        logger.info("Socket created.")
+    except Exception as e:
+        logger.critical("Failed to create socket - quitting.%s", e)
         error = True
         pycom.rgbled(RED)
         sys.exit()
-
     sock.setblocking(False)

@@ -37,13 +37,90 @@ from machine import Pin
 from onewire import OneWire
 from onewire import DS18X20     # Liquid temperature.
 
-#import utime
-from machine import RTC
-# =============================================================================
-# Flags.
-# =============================================================================
-error = False;
 
+def get_time():
+    """
+#   | The RTC module can set time directly from an NTP server   |
+#   | using e.g.                                                |
+#   |       rtc.ntp_sync("pool.ntp.org")                        |
+#   | but testing is on a local network without access to an    |
+#   | NTP server. Instead this function sends a command to get  |
+#   | a datatime packet from the database injector.             |
+    """
+    old_time = RTC.now()
+    if NTP_AVAILABLE:
+        RTC.ntp_sync(NTP_ADDRESS)
+        new_time = RTC.now()
+        out_str = """Getting time from NTP server {0}
+Current time is {1}
+Revised time is {2}""".format(NTP_ADDRESS, old_time, new_time)
+        logger.info(out_str)
+    else:
+        packet = "ntp"
+        sock.sendto(packet, HOST_ADDRESS)
+        ntp_time, ip_from = sock.recvfrom(512)
+        dec_time = ntp_time.decode('utf-8')
+        set_time = tuple(map(int, dec_time.split(",")))
+        RTC.init(set_time)
+        new_time = RTC.now()
+        out_str = """Getting time from database injector.
+Current time is {0}
+Revised time is {1}""".format(old_time, new_time)
+        logger.info(out_str)
+
+
+def send_data(sensor, value):
+    """Takes readings and sends data to database injector."""
+    # Pack the data into a C type structure.
+    packet = struct.pack("@12sHf", STATION_MAC, sensor, value)
+    logger.info("Sent {} bytes.\nData packet = {}".format(len(packet), packet))
+    if DATA_OVER_USB:
+        uart.write(packet)
+    else:
+        sock.sendto(packet, HOST_ADDRESS)
+    time.sleep(1)
+
+def take_readings():
+    pycom.rgbled(BLUE) # Change the LED to indicate that it is taking readings.
+    if lts_ready: # DS18B20 liquid temperature sensor.
+        logger.info("Water temperature readings:")
+        liquid_temp_sensor.start_conversion()
+        reading = False
+        while not reading:
+            water_temperature = liquid_temp_sensor.read_temp_async()
+            if water_temperature is not None:
+                reading = True
+        logger.info("Water temperature = {} \u00b0C.".format(water_temperature))
+        send_data(sensors['water_temperature'], water_temperature)
+
+    if barometer_ready: # MPL3115A2 barometer sensor.
+        logger.info("Barometer readings:")
+        barometer_temperature = barometric_pressure.temperature()
+        logger.info("Temperature = {} \u00b0C".format(barometer_temperature))
+        send_data(sensors['barometer_temperature'], barometer_temperature)
+
+    if humidity_sensor_ready: # SI7006A20 humidity sensor.
+        logger.info("Humidity sensor readings:")
+        humidity_humidity = humidity_sensor.humidity()
+        humidity_temperature = humidity_sensor.temperature()
+        logger.info("Humidity    = {} %.".format(humidity_humidity))
+        send_data(sensors['humidity_humidity'], humidity_humidity)
+        logger.info(u"Temperature = {} \u00b0C.".format(humidity_temperature))
+        send_data(sensors['humidity_temperature'], humidity_temperature)
+
+    if light_sensor_ready: # LTR329ALS01 light sensor.
+        logger.info("Ambient light sensor readings:")
+        ambient_light_0 = light_sensor.light()[0]
+        ambient_light_1 = light_sensor.light()[1]
+        logger.info("Light level (sensor 0) = {} lx.".format(ambient_light_0))
+        send_data(sensors['ambient_light_0'], ambient_light_0)
+        logger.info("Light level (sensor 1) = {} lx.".format(ambient_light_1))
+        send_data(sensors['ambient_light_1'], ambient_light_1)
+
+    pycom.rgbled(GREEN)
+    return
+
+RTC = machine.RTC() # Get date and time from server.
 # =============================================================================
 # Set up sensors.
 # =============================================================================
@@ -76,6 +153,8 @@ sensors = {'water_temperature'    :  0,
            'ambient_light_1'      : 16,
            'ph_level'             : 20}
 
+
+
 #   ,-----------------------------------------------------------,
 #   | These are the PySense specific sensors.                   |
 #   '-----------------------------------------------------------'
@@ -94,16 +173,13 @@ liquid_temp_sensor = DS18X20(lts_pin)
 #   ,-----------------------------------------------------------,
 #   | Now let's see which sensors are attached and working.     |
 #   '-----------------------------------------------------------'
-
-'''DS18B20'''
+# DS18B20
 lts_ready = lts_pin.reset()
-if PRINT_OUTPUT:
-    print("Liquid temperature sensor present = {}.".format(lts_ready))
+logger.info("Liquid temperature sensor present = %s.", lts_ready)
 
-'''MPL3115A2'''
+# MPL3115A2
 barometer_ready = barometric_pressure._read_status()
-if PRINT_OUTPUT:
-    print("Barometer sensor present = {}.".format(barometer_ready))
+logger.info("Barometer sensor present = %s.", barometer_ready)
 
 #   ,-----------------------------------------------------------,
 #   | There are no available functions to test the presence of  |
@@ -113,174 +189,22 @@ if PRINT_OUTPUT:
 #   | detect them.                                              |
 #   '-----------------------------------------------------------'
 
-'''LTR329ALS01'''
+# LTR329ALS01
 light_sensor_ready = True       # There is no available function to test.
-if PRINT_OUTPUT:
-    print("Light sensor present = {}.".format(light_sensor_ready))
-
-'''SI7006A20'''
+logger.info("Light sensor present = %s.", light_sensor_ready)
+# SI7006A20
 humidity_sensor_ready = True    # There is no available function to test.
-if PRINT_OUTPUT:
-    print("Humidity sensor present = {}.".format(humidity_sensor_ready))
-
-if PRINT_OUTPUT:
-    print("")
-
-# =============================================================================
-# Get date and time from server.
-# =============================================================================
-rtc = RTC()
-
-#   ,-----------------------------------------------------------,
-#   | The rtc module can set time directly from an NTP server   |
-#   | using e.g.                                                |
-#   |       rtc.ntp_sync("pool.ntp.org")                        |
-#   | but testing is on a local network without access to an    |
-#   | NTP server. Instead this function sends a command to get  |
-#   | a datatime packet from the database injector.             |
-#   '-----------------------------------------------------------'
-def get_time():
-    old_time = rtc.now()
-    if NTP_AVAILABLE:
-        rtc.ntp_sync(NTP_ADDRESS)
-        new_time = rtc.now()
-        if PRINT_OUTPUT:
-            print("Getting time from NTP server {}.".format(NTP_ADDRESS))
-            print("Current time is {}".format(old_time))
-            print("Revised time is {}".format(new_time))
-    else:
-        packet = "ntp"
-        sock.sendto(packet, HOST_ADDRESS)
-        ntp_time, ip_from = sock.recvfrom(512)
-        dec_time = ntp_time.decode('utf-8')
-        set_time = tuple(map(int, dec_time.split(",")))
-        rtc.init(set_time)
-        new_time = rtc.now()
-        if PRINT_OUTPUT:
-            print("Getting time from database injector.")
-            print("Current time is {}".format(old_time))
-            print("Revised time is {}".format(new_time))
-
-# =============================================================================
-# Takes readings and sends data to database injector.
-# =============================================================================
-def send_data(mac, sensor, value):
-
-    # Pack the data into a C type structure.
-    packet = struct.pack("@12sHf", mac, sensor, value)
-
-    if PRINT_OUTPUT:
-        print("Sent {} bytes.".format(len(packet)))
-        print("Data packet = {}.".format(packet))
-        print("")
-
-    if DATA_OVER_USB:
-        uart.write(packet)
-    else:
-        sock.sendto(packet, HOST_ADDRESS)
-    time.sleep(1)
-
-def take_readings():
-
-#   ,-----------------------------------------------------------,
-#   | Change the LED to indicate that it is taking readings.    |
-#   '-----------------------------------------------------------'
-    pycom.rgbled(BLUE)
-
-#   ,-------------------------------------------------------,
-#   | DS18B20 liquid temperature sensor.                    |
-#   '-------------------------------------------------------'
-    if lts_ready:
-        if PRINT_OUTPUT:
-            print("Water temperature readings:")
-
-        liquid_temp_sensor.start_conversion()
-        reading = False
-        while not reading:
-            water_temperature = liquid_temp_sensor.read_temp_async()
-            if water_temperature is not None:
-                reading = True
-
-        if PRINT_OUTPUT:
-            print("\tWater temperature = {} \u00b0C.".format(water_temperature))
-            print("")
-
-        send_data(station_mac, sensors['water_temperature'], water_temperature)
-
-#   ,-------------------------------------------------------,
-#   | MPL3115A2 barometer sensor.                           |
-#   '-------------------------------------------------------'
-    if barometer_ready:
-        if PRINT_OUTPUT:
-            print("Barometer readings:")
-
-        barometer_temperature = barometric_pressure.temperature()
-        if PRINT_OUTPUT:
-            print("\tTemperature = {} \u00b0C".format(barometer_temperature))
-            print("")
-
-        send_data(station_mac, sensors['barometer_temperature'], barometer_temperature)
-
-#   ,-------------------------------------------------------,
-#   | SI7006A20 humidity sensor.                            |
-#   '-------------------------------------------------------'
-    if humidity_sensor_ready:
-        if PRINT_OUTPUT:
-            print("Humidity sensor readings:")
-
-        humidity_humidity = humidity_sensor.humidity()
-        humidity_temperature = humidity_sensor.temperature()
-
-        if PRINT_OUTPUT:
-            print("\tHumidity    = {} %.".format(humidity_humidity))
-            print("")
-
-        send_data(station_mac, sensors['humidity_humidity'], humidity_humidity)
-
-        if PRINT_OUTPUT:
-            print("\tTemperature = {} \u00b0C.".format(humidity_temperature))
-            print("")
-
-        send_data(station_mac, sensors['humidity_temperature'], humidity_temperature)
-
-#   ,-------------------------------------------------------,
-#   | LTR329ALS01 light sensor.                             |
-#   '-------------------------------------------------------'
-    if light_sensor_ready:
-        if PRINT_OUTPUT:
-            print("Ambient light sensor readings:")
-
-        ambient_light_0 = light_sensor.light()[0]
-        ambient_light_1 = light_sensor.light()[1]
-
-        if PRINT_OUTPUT:
-            print("\tLight level (sensor 0) = {} lx.".format(ambient_light_0))
-            print("")
-
-        send_data(station_mac, sensors['ambient_light_0'], ambient_light_0)
-
-        if PRINT_OUTPUT:
-            print("\tLight level (sensor 1) = {} lx.".format(ambient_light_1))
-            print("")
-
-        send_data(station_mac, sensors['ambient_light_1'], ambient_light_1)
-
-    pycom.rgbled(GREEN)
+logger.info("Humidity sensor present = %s.", humidity_sensor_ready)
 
 # =============================================================================
 # Main loop.
 # =============================================================================
 #get_time()
-
-error = False
-if PRINT_OUTPUT:
-    print("Starting Main Loop")
-take_readings()
-
+logger.info("Starting Main Loop")
 chrono.start()
 start_time = time.time()
+error = False
 while not error:
-
     check_time = time.time()
     elapsed_time = check_time - start_time
     if elapsed_time >= SENSOR_INTERVAL * 60:
