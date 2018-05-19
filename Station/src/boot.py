@@ -38,7 +38,7 @@ from network import WLAN
 from machine import Timer
 from machine import UART
 
-logging.basicConfig(level=logging.CRITICAL)
+logging.basicConfig(level=logging.CRITICAL, filename=True)
 logger = logging.getLogger(__name__)
 
 # =============================================================================
@@ -99,11 +99,6 @@ BLACK = 0x000000
 
 UART = None
 SOCK = None
-
-def status(message):
-    OUTFILE = 'STATUS'
-    with open(OUTFILE, mode='w') as w:
-        w.write(message + '\n')
 
 def connect_to_network():
     """Connect to access point"""
@@ -188,7 +183,6 @@ DNS server  : {3}""".format(ip, mask, gateway, dns)
 pycom.heartbeat(False)  # Turn off pulsing LED heartbeat.
 chrono = Timer.Chrono()
 STATION_MAC = binascii.hexlify(machine.unique_id())
-status("START OF BOOT")
 logger.info("Station MAC = %s.", STATION_MAC.decode())
 if DATA_OVER_USB:
     setup_serial()
@@ -196,7 +190,5 @@ else:
     wlan = WLAN(mode=WLAN.STA)
     connect_to_network()
     setup_socket()
-
-status("END OF BOOT")
 
 # with open('STATUS') as f: print(f.readlines())
