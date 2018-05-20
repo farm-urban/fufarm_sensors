@@ -38,7 +38,7 @@ from network import WLAN
 from machine import Timer
 from machine import UART
 
-logging.basicConfig(level=logging.CRITICAL, filename=True)
+logging.basicConfig(level=logging.DEBUG, filename=True)
 logger = logging.getLogger(__name__)
 
 # =============================================================================

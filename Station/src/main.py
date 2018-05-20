@@ -72,12 +72,14 @@ def send_data(sensor, value):
     """Takes readings and sends data to database injector."""
     # Pack the data into a C type structure.
     packet = struct.pack("@12sHf", STATION_MAC, sensor, value)
-    logger.info("Sent {} bytes.\nData packet = {}".format(len(packet), packet))
+    logger.info("Sending {} bytes.\nData packet = {}".format(len(packet), packet))
     if DATA_OVER_USB:
-        UART.write(packet)
+        nbytes = UART.write(packet)
+        logger.info("UART wrote %s bytes", nbytes)
     else:
         SOCK.sendto(packet, HOST_ADDRESS)
     time.sleep(1)
+    logger.info("Finished sending data")
 
 def take_readings():
     pycom.rgbled(BLUE) # Change the LED to indicate that it is taking readings.
@@ -89,13 +91,13 @@ def take_readings():
             water_temperature = liquid_temp_sensor.read_temp_async()
             if water_temperature is not None:
                 reading = True
-        logger.info("Water temperature = {} \u00b0C.".format(water_temperature))
+        logger.info(u"Water temperature = {} \u00b0C.".format(water_temperature))
         send_data(sensors['water_temperature'], water_temperature)
 
     if barometer_ready: # MPL3115A2 barometer sensor.
         logger.info("Barometer readings:")
         barometer_temperature = barometric_pressure.temperature()
-        logger.info("Temperature = {} \u00b0C".format(barometer_temperature))
+        logger.info(u"Temperature = {} \u00b0C".format(barometer_temperature))
         send_data(sensors['barometer_temperature'], barometer_temperature)
 
     if humidity_sensor_ready: # SI7006A20 humidity sensor.
@@ -207,5 +209,9 @@ while not error:
     check_time = time.time()
     elapsed_time = check_time - start_time
     if elapsed_time >= SENSOR_INTERVAL * 60:
-        take_readings()
+        try:
+            take_readings()
+        except Exception as e:
+            logger.critical("Error taking readings:\n{}".format(e))
+            error = True
         start_time = time.time()
