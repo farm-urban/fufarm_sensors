@@ -1,5 +1,6 @@
 import uos
 import sys
+from machine import RTC
 
 CRITICAL = 50
 ERROR    = 40
@@ -16,7 +17,14 @@ _level_dict = {
     DEBUG: "DEBUG",
 }
 
+def rtc_to_dict(rtc):
+    fields = ('year', 'month', 'day', 'hour', 'minute', 'second', 'microsecond', 'tzinfo')
+    now = rtc.now()
+    return dict((a,b) for a,b in zip(fields, now))
+
 _stream = sys.stderr
+_rtc = RTC()
+_rtc.init()
 
 class Logger:
 
@@ -63,7 +71,8 @@ class FileLogger(Logger):
         if level >= (self.level or _level):
             if self._logIsFull():
                 self._rotateLogs()
-            print(("%s:%s:" + msg) % ((self._level_str(level), self.name) + args), file=self.fh)
+            stime = "{day}/{month}/{year} {hour}:{minute}:{second}".format(**rtc_to_dict(_rtc))
+            print(("%s %s:%s:" + msg) % ((stime, self._level_str(level), self.name) + args), file=self.fh)
 
     def _logIsFull(self):
         self.fh.flush()
@@ -108,11 +117,13 @@ def info(msg, *args):
 def debug(msg, *args):
     getLogger(None).debug(msg, *args)
 
-def basicConfig(level=INFO, filename=None, stream=None, format=None):
-    global _level, _stream, _logger_cls
+def basicConfig(level=INFO, filename=None, stream=None, format=None, rtc=None):
+    global _level, _stream, _logger_cls, _rtc
     _level = level
     if stream:
         _stream = stream
+    if rtc:
+        _rtc = rtc
     # if filename is not None:
     #     print("logging.basicConfig: filename arg is not supported")
     if filename is not None:
