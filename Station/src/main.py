@@ -74,12 +74,15 @@ def send_data(sensor, value):
     packet = struct.pack("@12sHf", STATION_MAC, sensor, value)
     logger.info("Sending {} bytes.\nData packet = {}".format(len(packet), packet))
     if DATA_OVER_USB:
-        nbytes = UART.write(packet)
-        logger.info("UART wrote %s bytes", nbytes)
+        #pass
+        #nbytes = UART.write(packet)
+        UART.write(packet)
+        #logger.info("UART wrote %s bytes", nbytes)
     else:
         SOCK.sendto(packet, HOST_ADDRESS)
     time.sleep(1)
     logger.info("Finished sending data")
+
 
 def take_readings():
     pycom.rgbled(BLUE) # Change the LED to indicate that it is taking readings.
@@ -104,7 +107,7 @@ def take_readings():
         logger.info("Humidity sensor readings:")
         humidity_humidity = humidity_sensor.humidity()
         humidity_temperature = humidity_sensor.temperature()
-        logger.info("Humidity    = {} %.".format(humidity_humidity))
+        logger.info("Humidity  = {}".format(humidity_humidity))
         send_data(sensors['humidity_humidity'], humidity_humidity)
         logger.info(u"Temperature = {} \u00b0C.".format(humidity_temperature))
         send_data(sensors['humidity_temperature'], humidity_temperature)
@@ -120,6 +123,7 @@ def take_readings():
 
     pycom.rgbled(GREEN)
     return
+
 
 RTC = machine.RTC() # Get date and time from server.
 # =============================================================================
@@ -212,6 +216,6 @@ while not error:
         try:
             take_readings()
         except Exception as e:
-            logger.critical("Error taking readings:\n{}".format(e))
+            logger.critical("Error taking readings:\n{}".format(e.message))
             error = True
         start_time = time.time()

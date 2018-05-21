@@ -150,6 +150,7 @@ def setup_serial():
     UART = machine.UART(BUS, BAUDRATE)
     UART.init(BAUDRATE, bits=8, parity=None, stop=1)
 
+
 def setup_socket():
     # Connection keeps dropping.
     if not wlan.isconnected():
