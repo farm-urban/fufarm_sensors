@@ -36,7 +36,6 @@ import time
 
 from network import WLAN
 from machine import Timer
-from machine import UART
 
 logging.basicConfig(level=logging.DEBUG, filename=True)
 logger = logging.getLogger(__name__)
@@ -145,6 +144,7 @@ DNS server  : {3}""".format(NETWORK_IP, NETWORK_MASK, NETWORK_GATEWAY, NETWORK_D
 
 def setup_serial():
     #os.dupterm(None) # Kill the REPL?
+    global UART
     BUS = 0
     BAUDRATE = 9600
     UART = machine.UART(BUS, BAUDRATE)

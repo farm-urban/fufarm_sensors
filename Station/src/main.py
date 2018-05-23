@@ -71,14 +71,14 @@ Revised time is {1}""".format(old_time, new_time)
 def send_data(sensor, value):
     """Takes readings and sends data to database injector."""
     # Pack the data into a C type structure.
+    logger.info("SENDING VALUE {} {} to {}".format(value, type(value), UART))
     packet = struct.pack("@12sHf", STATION_MAC, sensor, value)
     logger.info("Sending {} bytes.\nData packet = {}".format(len(packet), packet))
     if DATA_OVER_USB:
-        #pass
-        #nbytes = UART.write(packet)
-        UART.write(packet)
-        #logger.info("UART wrote %s bytes", nbytes)
+        nbytes = UART.write(packet)
+        logger.info("UART wrote %s bytes", nbytes)
     else:
+        logger.info("SOCKET SEND")
         SOCK.sendto(packet, HOST_ADDRESS)
     time.sleep(1)
     logger.info("Finished sending data")
