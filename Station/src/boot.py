@@ -173,7 +173,7 @@ DNS server  : {3}""".format(ip, mask, gateway, dns)
         SOCK = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         logger.info("Socket created.")
     except Exception as e:
-        logger.critical("Failed to create socket - quitting.%s", e)
+        logger.critical("Failed to create socket - quitting: {}: {}".format(type(e),e))
         error = True
         pycom.rgbled(RED)
         sys.exit()
