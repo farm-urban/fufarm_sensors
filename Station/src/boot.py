@@ -64,7 +64,7 @@ NTP_AVAILABLE   = False             # NTP server available?
 NTP_ADDRESS     = 'pool.ntp.org'    # Address of open NTP server.
 
 DATA_OVER_USB = True # jmht - send data over the USB cable rather then wifi
-SENSOR_INTERVAL = 0.2 # Minutes.
+SENSOR_INTERVAL = 0.1 # Minutes.
 
 # =============================================================================
 # Data structures.
@@ -144,11 +144,13 @@ DNS server  : {3}""".format(NETWORK_IP, NETWORK_MASK, NETWORK_GATEWAY, NETWORK_D
 
 def setup_serial():
     #os.dupterm(None) # Kill the REPL?
+    logger.debug("Setting up serial")
     global UART
     BUS = 0
     BAUDRATE = 9600
     UART = machine.UART(BUS, BAUDRATE)
     UART.init(BAUDRATE, bits=8, parity=None, stop=1)
+    logger.debug("Serial done")
 
 
 def setup_socket():
@@ -193,3 +195,4 @@ else:
     setup_socket()
 
 # with open('STATUS') as f: print(f.readlines())
+logger.debug('completed boot.py')
