@@ -32,12 +32,13 @@ import socket
 import struct
 import sys
 import time
-from machine import Timer # requires separate import
+# These require separate imports
+from machine import Timer
+from network import WLAN
 
-
-LOG_LEVEL = logging.CRITICAL
+LOG_LEVEL = logging.DEBUG
 DATA_OVER_USB = True # jmht - send data over the USB cable rather then wifi
-
+ERROR = False # Global error flag - required as main executed regardless of boot.py
 # =============================================================================
 # Networking.
 # =============================================================================
@@ -94,9 +95,8 @@ BLUE = 0x0000ff
 BLACK = 0x000000
 
 UART = None
-SOCK = None
-
-def connect_to_network():
+SOCKET = None
+def connect_to_network(wlan):
     """Connect to access point"""
     if STATIC_IP:
         info_str = """
@@ -106,28 +106,33 @@ Subnet mask : {1}
 Gateway     : {2}
 DNS server  : {3}""".format(NETWORK_IP, NETWORK_MASK, NETWORK_GATEWAY, NETWORK_DNS)
         logger.info(info_str)
-        WLAN.ifconfig(config=NETWORK_CONFIG)
+        wlan.ifconfig(config=NETWORK_CONFIG)
     else:
         logger.info("IP address will be assigned via DHCP.")
-
-    logger.info("Looking for access point.", end="")
-    nets = WLAN.scan()
+    logger.info("Looking for access point: {}".format(NETWORK_SSID))
+    nets = wlan.scan()
+    found = False
     for net in nets:
-        logger.info(".")
+        #logger.info(".")
         if net.ssid == NETWORK_SSID:
-            logger.info("Found %s access point!", NETWORK_SSID)
+            logger.info("Found %s access point!".format(NETWORK_SSID))
+            found = True
             break
-    logger.info("Connecting")
+    if not found:
+        logger.critical("Could not find access point {}".format(NETWORK_SSID))
+        return False
+
 #   ,-----------------------------------------------------------,
 #   | The WLAN.connect timeout doesn't actually do anything so  |
 #   | an alternative timeout method has been implemented.       |
 #   | See Pycom forum topic 2201.                               |
 #   '-----------------------------------------------------------'
-    WLAN.connect(net.ssid, auth=(net.sec, NETWORK_KEY))
+    logger.info("Connecting to {}".format(NETWORK_SSID))
+    wlan.connect(net.ssid, auth=(net.sec, NETWORK_KEY))
     CHRONO.start()
     start_loop = CHRONO.read()
     start_scan = start_loop
-    while not WLAN.isconnected():
+    while not wlan.isconnected():
         if CHRONO.read() - start_scan >= NETWORK_TIMEOUT:
             logger.critical("Timout on network connect.")
             break
@@ -135,9 +140,27 @@ DNS server  : {3}""".format(NETWORK_IP, NETWORK_MASK, NETWORK_GATEWAY, NETWORK_D
             start_loop = CHRONO.read()
             logger.info(".")
     CHRONO.stop()
-#if WLAN.isconnected():
-#    WLAN.disconnect
-    return
+
+    if wlan.isconnected():
+        info_str = """
+Successfully connected to network.
+Network config:
+IP          : {0}
+Subnet mask : {1}
+Gateway     : {2}
+DNS server  : {3}""".format(wlan.ifconfig())
+        logger.info(info_str)
+
+    return wlan.isconnected()
+
+def reset_wlan(wlan):
+    """Reset the WLAN to the default settings"""
+    #wlan.deinit()
+    wlan.init(mode=WLAN.AP,
+              ssid='wipy-wlan-1734',
+              auth=(WLAN.WPA2,'www.pycom.io'),
+              channel=6,
+              antenna=WLAN.INT_ANT)
 
 def setup_serial():
     #os.dupterm(None) # Kill the REPL?
@@ -151,50 +174,50 @@ def setup_serial():
 
 
 def setup_socket():
+    logger.debug("Setting up socket")
     # Connection keeps dropping.
-    if not WLAN.isconnected():
-        logger.info("Couldn't connect to access point.")
-        pycom.rgbled(RED)
-        sys.exit(1)
-    ip, mask, gateway, dns = WLAN.ifconfig()
-    info_str = """
-Successfully connected to network.
-Network config:
-IP          : {0}
-Subnet mask : {1}
-Gateway     : {2}
-DNS server  : {3}""".format(ip, mask, gateway, dns)
-    logger.info(info_str)
-    time.sleep(1)
+    # if not P_WLAN.isconnected():
+    #     logger.critical("Couldn't connect to access point.")
+    #     pycom.rgbled(RED)
+    #     sys.exit(1)
     logger.info("Trying to create a network socket.")
     try:
-        SOCK = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sockt = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         logger.info("Socket created.")
     except Exception as e:
         logger.critical("Failed to create socket - quitting: {}: {}".format(type(e),e))
-        error = True
         pycom.rgbled(RED)
         sys.exit()
-    SOCK.setblocking(False)
-    return
+    sockt.setblocking(False)
+    return soctk
 
-logging.basicConfig(level=LOG_LEVEL, filename=True)
-logger = logging.getLogger(__name__)
+def setup_communication():
+    global SOCKET, DATA_OVER_USB
+    if DATA_OVER_USB:
+        setup_serial()
+    else:
+        wlan = WLAN(mode=WLAN.STA)
+        if connect_to_network(wlan):
+            SOCKET = setup_socket()
+        else:
+            reset_wlan(wlan)
+            raise RuntimeError("Could not connect to network")
 
 # Initialisation.
-# rgbled seems to have no effect in boot.py
+logging.basicConfig(level=LOG_LEVEL, filename=True)
+logger = logging.getLogger(__name__)
 pycom.heartbeat(False)  # Turn off pulsing LED heartbeat.
 time.sleep(0.1) # sleep required to get rgbled to change color?!?
-pycom.rgbled(AMBER) # This doesn't seem to do anything?
+pycom.rgbled(AMBER)
 CHRONO = Timer.Chrono()
 STATION_MAC = binascii.hexlify(machine.unique_id())
 logger.info("Station MAC = %s.", STATION_MAC.decode())
-if DATA_OVER_USB:
-    setup_serial()
-else:
-    WLAN = machine.WLAN(mode=machine.WLAN.STA)
-    connect_to_network()
-    setup_socket()
+try:
+    setup_communication()
+except Exception as e:
+    logger.critical("Error setting up communication: {}: {}".format(type(e),e))
+    ERROR = True
+    pycom.rgbled(RED)
+    time.sleep(3)
 
-# with open('STATUS') as f: print(f.readlines())
 logger.debug('completed boot.py')

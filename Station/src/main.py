@@ -18,6 +18,10 @@
 
 """
 logger.debug("main.py")
+if ERROR:
+    logger.critical('main.py not running as error detected')
+    sys.exit(1)
+
 #   ,-----------------------------------------------------------,
 #   | These are the libraries for the PySense board sensors.    |
 #   | These are from the PyCom github repository.               |
@@ -56,8 +60,8 @@ Revised time is {2}""".format(NTP_ADDRESS, old_time, new_time)
         logger.info(out_str)
     else:
         packet = "ntp"
-        SOCK.sendto(packet, HOST_ADDRESS)
-        ntp_time, ip_from = SOCK.recvfrom(512)
+        SOCKET.sendto(packet, HOST_ADDRESS)
+        ntp_time, ip_from = SOCKET.recvfrom(512)
         dec_time = ntp_time.decode('utf-8')
         set_time = tuple(map(int, dec_time.split(",")))
         RTC.init(set_time)
@@ -77,7 +81,7 @@ def send_data(sensor, value):
         nbytes = UART.write(packet)
         logger.info("UART wrote %s bytes", nbytes)
     else:
-        SOCK.sendto(packet, HOST_ADDRESS)
+        SOCKET.sendto(packet, HOST_ADDRESS)
     time.sleep(1)
     logger.info("Finished sending data")
 

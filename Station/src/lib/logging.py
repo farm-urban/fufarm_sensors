@@ -62,7 +62,7 @@ class FileLogger(Logger):
     def __init__(self, name):
         super().__init__(name)
         self.prefix = 'LOG'
-        self.max_log_size = 1000
+        self.max_log_size = 2000
         self.current_log = '{}.{}'.format(self.prefix, 1)
         self.last_log = '{}.{}'.format(self.prefix, 2)
         self.fh = open(self.current_log,'w')
@@ -86,7 +86,7 @@ class FileLogger(Logger):
         self.fh.close()
         if self.exists(self.last_log):
             uos.unlink(self.last_log)
-        #uos.rename(self.current_log, self.last_log)
+        uos.rename(self.current_log, self.last_log)
         self.fh = open(self.current_log, mode='w')
 
     @staticmethod
