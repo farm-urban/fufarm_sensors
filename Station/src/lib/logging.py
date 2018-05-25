@@ -73,6 +73,7 @@ class FileLogger(Logger):
                 self._rotateLogs()
             stime = "{day}/{month}/{year} {hour}:{minute}:{second}".format(**rtc_to_dict(_rtc))
             print(("%s %s:%s:" + msg) % ((stime, self._level_str(level), self.name) + args), file=self.fh)
+            self.fh.flush()
 
     def _logIsFull(self):
         self.fh.flush()
