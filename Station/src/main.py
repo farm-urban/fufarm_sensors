@@ -17,17 +17,17 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 """
+logger.info("main.py")
 #   ,-----------------------------------------------------------,
 #   | These are the libraries for the PySense board sensors.    |
 #   | These are from the PyCom github repository.               |
 #   '-----------------------------------------------------------'
 from pysense     import Pysense     # Main pysense module.
-from LTR329ALS01 import LTR329ALS01 # Ambient light.
-from MPL3115A2   import MPL3115A2   # Barometer & temperature.
+from LTR329ALS01 import LTR329ALS01 # Ambient Light
+from MPL3115A2 import MPL3115A2 # Barometer and temperature
 #from MPL3115A2   import ALTITUDE    # Barometric pressure.
 from MPL3115A2   import PRESSURE    # Barometric altitude.
 from SI7006A20   import SI7006A20   # Humidity & temperature.
-
 #   ,-----------------------------------------------------------,
 #   | These are the libraries for the DS18B20 sensor.           |
 #   | The onewire library is from the PyCom github repository.  |
@@ -122,7 +122,6 @@ def take_readings():
     pycom.rgbled(GREEN)
     return
 
-
 RTC = machine.RTC() # Get date and time from server.
 # =============================================================================
 # Set up sensors.
@@ -166,7 +165,6 @@ light_sensor = LTR329ALS01(board)
 barometric_pressure = MPL3115A2(board, mode=PRESSURE)
 #barometric_altitude = MPL3115A2(board, mode=ALTITUDE)
 humidity_sensor = SI7006A20(board)
-
 #   ,-----------------------------------------------------------,
 #   | This is the DS18B20 liquid temperature sensor.            |
 #   '-----------------------------------------------------------'
