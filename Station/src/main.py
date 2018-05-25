@@ -17,7 +17,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-logger.info("main.py")
+logger.debug("main.py")
 #   ,-----------------------------------------------------------,
 #   | These are the libraries for the PySense board sensors.    |
 #   | These are from the PyCom github repository.               |
@@ -155,8 +155,6 @@ sensors = {'water_temperature'    :  0,
            'ambient_light_1'      : 16,
            'ph_level'             : 20}
 
-
-
 #   ,-----------------------------------------------------------,
 #   | These are the PySense specific sensors.                   |
 #   '-----------------------------------------------------------'
@@ -202,7 +200,7 @@ logger.info("Humidity sensor present = %s.", humidity_sensor_ready)
 # =============================================================================
 #get_time()
 logger.info("Starting Main Loop")
-chrono.start()
+CHRONO.start()
 start_time = time.time()
 error = False
 while not error:

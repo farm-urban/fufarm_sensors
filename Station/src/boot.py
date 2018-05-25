@@ -32,13 +32,11 @@ import socket
 import struct
 import sys
 import time
+from machine import Timer # requires separate import
 
 
-from network import WLAN
-from machine import Timer
-
-logging.basicConfig(level=logging.DEBUG, filename=True)
-logger = logging.getLogger(__name__)
+LOG_LEVEL = logging.CRITICAL
+DATA_OVER_USB = True # jmht - send data over the USB cable rather then wifi
 
 # =============================================================================
 # Networking.
@@ -63,7 +61,6 @@ HOST_ADDRESS    = (HOST_NAME, HOST_PORT)
 NTP_AVAILABLE   = False             # NTP server available?
 NTP_ADDRESS     = 'pool.ntp.org'    # Address of open NTP server.
 
-DATA_OVER_USB = True # jmht - send data over the USB cable rather then wifi
 SENSOR_INTERVAL = 0.1 # Minutes.
 
 # =============================================================================
@@ -109,12 +106,12 @@ Subnet mask : {1}
 Gateway     : {2}
 DNS server  : {3}""".format(NETWORK_IP, NETWORK_MASK, NETWORK_GATEWAY, NETWORK_DNS)
         logger.info(info_str)
-        wlan.ifconfig(config=NETWORK_CONFIG)
+        WLAN.ifconfig(config=NETWORK_CONFIG)
     else:
         logger.info("IP address will be assigned via DHCP.")
 
     logger.info("Looking for access point.", end="")
-    nets = wlan.scan()
+    nets = WLAN.scan()
     for net in nets:
         logger.info(".")
         if net.ssid == NETWORK_SSID:
@@ -122,24 +119,24 @@ DNS server  : {3}""".format(NETWORK_IP, NETWORK_MASK, NETWORK_GATEWAY, NETWORK_D
             break
     logger.info("Connecting")
 #   ,-----------------------------------------------------------,
-#   | The wlan.connect timeout doesn't actually do anything so  |
+#   | The WLAN.connect timeout doesn't actually do anything so  |
 #   | an alternative timeout method has been implemented.       |
 #   | See Pycom forum topic 2201.                               |
 #   '-----------------------------------------------------------'
-    wlan.connect(net.ssid, auth=(net.sec, NETWORK_KEY))
-    chrono.start()
-    start_loop = chrono.read()
+    WLAN.connect(net.ssid, auth=(net.sec, NETWORK_KEY))
+    CHRONO.start()
+    start_loop = CHRONO.read()
     start_scan = start_loop
-    while not wlan.isconnected():
-        if chrono.read() - start_scan >= NETWORK_TIMEOUT:
+    while not WLAN.isconnected():
+        if CHRONO.read() - start_scan >= NETWORK_TIMEOUT:
             logger.critical("Timout on network connect.")
             break
-        if chrono.read() - start_loop >= NETWORK_TIMEOUT / 50:
-            start_loop = chrono.read()
+        if CHRONO.read() - start_loop >= NETWORK_TIMEOUT / 50:
+            start_loop = CHRONO.read()
             logger.info(".")
-    chrono.stop()
-#if wlan.isconnected():
-#    wlan.disconnect
+    CHRONO.stop()
+#if WLAN.isconnected():
+#    WLAN.disconnect
     return
 
 def setup_serial():
@@ -155,12 +152,11 @@ def setup_serial():
 
 def setup_socket():
     # Connection keeps dropping.
-    if not wlan.isconnected():
+    if not WLAN.isconnected():
         logger.info("Couldn't connect to access point.")
         pycom.rgbled(RED)
         sys.exit(1)
-
-    ip, mask, gateway, dns = wlan.ifconfig()
+    ip, mask, gateway, dns = WLAN.ifconfig()
     info_str = """
 Successfully connected to network.
 Network config:
@@ -182,15 +178,21 @@ DNS server  : {3}""".format(ip, mask, gateway, dns)
     SOCK.setblocking(False)
     return
 
+logging.basicConfig(level=LOG_LEVEL, filename=True)
+logger = logging.getLogger(__name__)
+
 # Initialisation.
+# rgbled seems to have no effect in boot.py
 pycom.heartbeat(False)  # Turn off pulsing LED heartbeat.
-chrono = Timer.Chrono()
+time.sleep(0.1) # sleep required to get rgbled to change color?!?
+pycom.rgbled(AMBER) # This doesn't seem to do anything?
+CHRONO = Timer.Chrono()
 STATION_MAC = binascii.hexlify(machine.unique_id())
 logger.info("Station MAC = %s.", STATION_MAC.decode())
 if DATA_OVER_USB:
     setup_serial()
 else:
-    wlan = WLAN(mode=WLAN.STA)
+    WLAN = machine.WLAN(mode=machine.WLAN.STA)
     connect_to_network()
     setup_socket()
 
