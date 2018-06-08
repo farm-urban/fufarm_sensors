@@ -54,12 +54,8 @@ def init():
     pycom.heartbeat(False)  # Turn off pulsing LED heartbeat.
     time.sleep(0.1) # sleep required to get rgbled to change color?!?
     pycom.rgbled(AMBER)
-    try:
-        setup_communication()
-    except Exception as e:
-        logger.critical("Error setting up communication: {}: {}".format(type(e),e))
-        pycom.rgbled(RED)
-        sys.exit(1)
+    setup_communication()
+    pycom.rgbled(BLUE)
     logger.info('Finished Init')
     return
 
@@ -248,13 +244,8 @@ def setup_socket():
     #     pycom.rgbled(RED)
     #     sys.exit(1)
     logger.info("Trying to create a network socket.")
-    try:
-        sockt = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        logger.info("Socket created.")
-    except Exception as e:
-        logger.critical("Failed to create socket - quitting: {}: {}".format(type(e),e))
-        pycom.rgbled(RED)
-        sys.exit()
+    sockt = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    logger.info("Socket created.")
     sockt.setblocking(False)
     return sockt
 
@@ -275,24 +266,24 @@ def setup_communication():
             raise RuntimeError("Could not connect to network")
     return
 
+def exit_error(message, traceback=None):
+    logger.critical(message)
+    if traceback:
+        logger.logTraceback(traceback)
+    pycom.rgbled(RED)
+    time.sleep(3)
+    sys.exit(1)
+
 
 def main():
     logger.info("Starting Main Loop")
-    logger.info("UART is {}".format(UART))
     CHRONO.start()
     start_time = time.time()
     while True:
         check_time = time.time()
         elapsed_time = check_time - start_time
         if elapsed_time >= CONFIG.SENSOR_INTERVAL * 60:
-            logger.info('calling take_readings')
-            try:
-                take_readings()
-            except Exception as e:
-                logger.critical("Error taking readings: {}: {}".format(type(e),e))
-                logger.logTraceback(e)
-                pycom.rgbled(RED)
-                sys.exit(1)
+            take_readings()
             start_time = time.time()
     return
 
@@ -314,7 +305,11 @@ RTC = machine.RTC() # Get date and time from server.
 # Initialisation.
 logging.basicConfig(level=log_level(), filename=True)
 logger = logging.getLogger(__name__)
-init()
+try:
+    init()
+except Exception as e:
+    msg = "Error taking initialising network: {}: {}".format(type(e),e)
+    exit_error(msg, traceback=e)
 
 #   ,-----------------------------------------------------------,
 #   | These are the PySense specific sensors.                   |
@@ -359,4 +354,8 @@ logger.info("Humidity sensor present = %s.", humidity_sensor_ready)
 # =============================================================================
 # Main loop.
 # =============================================================================
-main()
+try:
+    main()
+except Exception as e:
+    msg = "Error running main program: {}: {}".format(type(e),e)
+    exit_error(msg, traceback=e)

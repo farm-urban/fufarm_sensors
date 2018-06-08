@@ -1,6 +1,6 @@
 """Configuration variables
 """
-LOG_LEVEL = 'DEBUG'
+LOG_LEVEL = 'CRITICAL'
 DATA_OVER_USB = True # jmht - send data over the USB cable rather then wifi
 
 # =============================================================================
