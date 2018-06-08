@@ -75,6 +75,12 @@ class FileLogger(Logger):
             print(("%s %s:%s:" + msg) % ((stime, self._level_str(level), self.name) + args), file=self.fh)
             self.fh.flush()
 
+    def logTraceback(self, traceback):
+        if self._logIsFull():
+            self._rotateLogs()
+        sys.print_exception(traceback, self.fh)
+        self.fh.flush()
+
     def _logIsFull(self):
         self.fh.flush()
         if self.fh.tell() >= self.max_log_size:

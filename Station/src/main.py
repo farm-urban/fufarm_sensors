@@ -17,21 +17,25 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-logger.debug("main.py")
-if ERROR:
-    logger.critical('main.py not running as error detected')
-    sys.exit(1)
 
-#   ,-----------------------------------------------------------,
-#   | These are the libraries for the PySense board sensors.    |
-#   | These are from the PyCom github repository.               |
-#   '-----------------------------------------------------------'
-from pysense     import Pysense     # Main pysense module.
+import binascii
+import socket
+import struct
+import sys
+import time
+# These require separate imports
+import machine
+import pycom
+from machine import Timer
+from network import WLAN
+
+# Libraries for the PySense board sensors from the PyCom github repository.               |
+from pysense import Pysense  # Main pysense module.
 from LTR329ALS01 import LTR329ALS01 # Ambient Light
 from MPL3115A2 import MPL3115A2 # Barometer and temperature
-#from MPL3115A2   import ALTITUDE    # Barometric pressure.
-from MPL3115A2   import PRESSURE    # Barometric altitude.
-from SI7006A20   import SI7006A20   # Humidity & temperature.
+#from MPL3115A2   import ALTITUDE # Barometric pressure.
+from MPL3115A2 import PRESSURE # Barometric altitude.
+from SI7006A20 import SI7006A20 # Humidity & temperature.
 #   ,-----------------------------------------------------------,
 #   | These are the libraries for the DS18B20 sensor.           |
 #   | The onewire library is from the PyCom github repository.  |
@@ -39,7 +43,26 @@ from SI7006A20   import SI7006A20   # Humidity & temperature.
 #   '-----------------------------------------------------------'
 from machine import Pin
 from onewire import OneWire
-from onewire import DS18X20     # Liquid temperature.
+from onewire import DS18X20  # Liquid temperature.
+
+# Local imports
+import logging
+import config as CONFIG
+
+
+def init():
+    pycom.heartbeat(False)  # Turn off pulsing LED heartbeat.
+    time.sleep(0.1) # sleep required to get rgbled to change color?!?
+    pycom.rgbled(AMBER)
+    try:
+        setup_communication()
+    except Exception as e:
+        logger.critical("Error setting up communication: {}: {}".format(type(e),e))
+        pycom.rgbled(RED)
+        sys.exit(1)
+    logger.info('Finished Init')
+    return
+
 
 def get_time():
     """
@@ -51,16 +74,16 @@ def get_time():
 #   | a datatime packet from the database injector.             |
     """
     old_time = RTC.now()
-    if NTP_AVAILABLE:
-        RTC.ntp_sync(NTP_ADDRESS)
+    if CONFIG.NTP_AVAILABLE:
+        RTC.ntp_sync(CONFIG.NTP_ADDRESS)
         new_time = RTC.now()
         out_str = """Getting time from NTP server {0}
 Current time is {1}
-Revised time is {2}""".format(NTP_ADDRESS, old_time, new_time)
+Revised time is {2}""".format(CONFIG.NTP_ADDRESS, old_time, new_time)
         logger.info(out_str)
     else:
         packet = "ntp"
-        SOCKET.sendto(packet, HOST_ADDRESS)
+        SOCKET.sendto(packet, CONFIG.HOST_ADDRESS)
         ntp_time, ip_from = SOCKET.recvfrom(512)
         dec_time = ntp_time.decode('utf-8')
         set_time = tuple(map(int, dec_time.split(",")))
@@ -70,23 +93,26 @@ Revised time is {2}""".format(NTP_ADDRESS, old_time, new_time)
 Current time is {0}
 Revised time is {1}""".format(old_time, new_time)
         logger.info(out_str)
+    return
 
 
 def send_data(sensor, value):
     """Takes readings and sends data to database injector."""
     # Pack the data into a C type structure.
-    packet = struct.pack("@12sHf", STATION_MAC, sensor, value)
+    packet = struct.pack("@12sHf", CONFIG.STATION_MAC, sensor, value)
     logger.info("Sending {} bytes.\nData packet = {}".format(len(packet), packet))
-    if DATA_OVER_USB:
+    if CONFIG.DATA_OVER_USB:
         nbytes = UART.write(packet)
         logger.info("UART wrote %s bytes", nbytes)
     else:
-        SOCKET.sendto(packet, HOST_ADDRESS)
+        SOCKET.sendto(packet, CONFIG.HOST_ADDRESS)
     time.sleep(1)
     logger.info("Finished sending data")
+    return
 
 
 def take_readings():
+    logger.debug('Take readings')
     pycom.rgbled(BLUE) # Change the LED to indicate that it is taking readings.
     if lts_ready: # DS18B20 liquid temperature sensor.
         logger.info("Water temperature readings:")
@@ -97,67 +123,198 @@ def take_readings():
             if water_temperature is not None:
                 reading = True
         logger.info(u"Water temperature = {} \u00b0C.".format(water_temperature))
-        send_data(sensors['water_temperature'], water_temperature)
+        send_data(CONFIG.SENSORS['water_temperature'], water_temperature)
 
     if barometer_ready: # MPL3115A2 barometer sensor.
         logger.info("Barometer readings:")
         barometer_temperature = barometric_pressure.temperature()
         logger.info(u"Temperature = {} \u00b0C".format(barometer_temperature))
-        send_data(sensors['barometer_temperature'], barometer_temperature)
+        send_data(CONFIG.SENSORS['barometer_temperature'], barometer_temperature)
 
     if humidity_sensor_ready: # SI7006A20 humidity sensor.
         logger.info("Humidity sensor readings:")
         humidity_humidity = humidity_sensor.humidity()
         humidity_temperature = humidity_sensor.temperature()
         logger.info("Humidity  = {}".format(humidity_humidity))
-        send_data(sensors['humidity_humidity'], humidity_humidity)
+        send_data(CONFIG.SENSORS['humidity_humidity'], humidity_humidity)
         logger.info(u"Temperature = {} \u00b0C.".format(humidity_temperature))
-        send_data(sensors['humidity_temperature'], humidity_temperature)
+        send_data(CONFIG.SENSORS['humidity_temperature'], humidity_temperature)
 
     if light_sensor_ready: # LTR329ALS01 light sensor.
         logger.info("Ambient light sensor readings:")
         ambient_light_0 = light_sensor.light()[0]
         ambient_light_1 = light_sensor.light()[1]
         logger.info("Light level (sensor 0) = {} lx.".format(ambient_light_0))
-        send_data(sensors['ambient_light_0'], ambient_light_0)
+        send_data(CONFIG.SENSORS['ambient_light_0'], ambient_light_0)
         logger.info("Light level (sensor 1) = {} lx.".format(ambient_light_1))
-        send_data(sensors['ambient_light_1'], ambient_light_1)
+        send_data(CONFIG.SENSORS['ambient_light_1'], ambient_light_1)
 
     pycom.rgbled(GREEN)
     return
 
+def log_level():
+    d = {'debug' : logging.DEBUG,
+         'info' : logging.INFO,
+         'critical' : logging.CRITICAL}
+    if CONFIG.LOG_LEVEL and isinstance(CONFIG.LOG_LEVEL, str) and \
+        CONFIG.LOG_LEVEL.lower()in d:
+        return d[CONFIG.LOG_LEVEL.lower()]
+    else:
+        return logging.CRITICAL
+
+def connect_to_network(wlan):
+    """Connect to access point"""
+    if CONFIG.STATIC_IP:
+        info_str = """
+Using static IP address with:
+IP          : {0}
+Subnet mask : {1}
+Gateway     : {2}
+DNS server  : {3}""".format(CONFIG.NETWORK_IP,
+                            CONFIG.NETWORK_MASK,
+                            CONFIG.NETWORK_GATEWAY,
+                            CONFIG.NETWORK_DNS)
+        logger.info(info_str)
+        wlan.ifconfig(config=CONFIG.NETWORK_CONFIG)
+    else:
+        logger.info("IP address will be assigned via DHCP.")
+    logger.info("Looking for access point: {}".format(CONFIG.NETWORK_SSID))
+    found = False
+    for net in wlan.scan():
+        if net.ssid == CONFIG.NETWORK_SSID:
+            logger.info("Found {} access point!".format(CONFIG.NETWORK_SSID))
+            found = True
+            break
+    if not found:
+        logger.critical("Could not find access point {}".format(CONFIG.NETWORK_SSID))
+        return False
+
+#   ,-----------------------------------------------------------,
+#   | The WLAN.connect timeout doesn't actually do anything so  |
+#   | an alternative timeout method has been implemented.       |
+#   | See Pycom forum topic 2201.                               |
+#   '-----------------------------------------------------------'
+    logger.info("Connecting to {}".format(CONFIG.NETWORK_SSID))
+    wlan.connect(net.ssid, auth=(net.sec, CONFIG.NETWORK_KEY))
+    CHRONO.start()
+    start_loop = CHRONO.read()
+    start_scan = start_loop
+    while not wlan.isconnected():
+        if CHRONO.read() - start_scan >= CONFIG.NETWORK_TIMEOUT:
+            logger.critical("Timout on network connect.")
+            break
+        if CHRONO.read() - start_loop >= CONFIG.NETWORK_TIMEOUT / 50:
+            start_loop = CHRONO.read()
+            logger.info(".")
+    CHRONO.stop()
+
+    if wlan.isconnected():
+        info_str = """
+Successfully connected to network.
+Network config:
+IP          : {0}
+Subnet mask : {1}
+Gateway     : {2}
+DNS server  : {3}""".format(wlan.ifconfig())
+        logger.info(info_str)
+
+    return wlan.isconnected()
+
+def reset_wlan(wlan):
+    """Reset the WLAN to the default settings"""
+    #wlan.deinit()
+    wlan.init(mode=WLAN.AP,
+              ssid='wipy-wlan-1734',
+              auth=(WLAN.WPA2, 'www.pycom.io'),
+              channel=6,
+              antenna=WLAN.INT_ANT)
+    return
+
+
+def setup_serial(bus=0, baudrate=9600, bits=8):
+    #os.dupterm(None) # Kill the REPL?
+    logger.debug("Setting up serial")
+    uart = machine.UART(bus, baudrate)
+    uart.init(baudrate, bits=bits, parity=None, stop=1)
+    logger.debug("Serial done")
+    return uart
+
+
+def setup_socket():
+    logger.debug("Setting up socket")
+    # Connection keeps dropping.
+    # if not P_WLAN.isconnected():
+    #     logger.critical("Couldn't connect to access point.")
+    #     pycom.rgbled(RED)
+    #     sys.exit(1)
+    logger.info("Trying to create a network socket.")
+    try:
+        sockt = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        logger.info("Socket created.")
+    except Exception as e:
+        logger.critical("Failed to create socket - quitting: {}: {}".format(type(e),e))
+        pycom.rgbled(RED)
+        sys.exit()
+    sockt.setblocking(False)
+    return sockt
+
+
+def setup_communication():
+    global UART, SOCKET
+    if CONFIG.STATION_MAC is None:
+        CONFIG.STATION_MAC = binascii.hexlify(machine.unique_id())
+    logger.info("Station MAC = %s.", CONFIG.STATION_MAC.decode())
+    if CONFIG.DATA_OVER_USB:
+        UART = setup_serial()
+    else:
+        wlan = WLAN(mode=WLAN.STA)
+        if connect_to_network(wlan):
+            SOCKET = setup_socket()
+        else:
+            reset_wlan(wlan)
+            raise RuntimeError("Could not connect to network")
+    return
+
+
+def main():
+    logger.info("Starting Main Loop")
+    logger.info("UART is {}".format(UART))
+    CHRONO.start()
+    start_time = time.time()
+    while True:
+        check_time = time.time()
+        elapsed_time = check_time - start_time
+        if elapsed_time >= CONFIG.SENSOR_INTERVAL * 60:
+            logger.info('calling take_readings')
+            try:
+                take_readings()
+            except Exception as e:
+                logger.critical("Error taking readings: {}: {}".format(type(e),e))
+                logger.logTraceback(e)
+                pycom.rgbled(RED)
+                sys.exit(1)
+            start_time = time.time()
+    return
+
+
+# =============================================================================
+# Colour definitions for LED.
+# =============================================================================
+GREEN = 0x00ff00
+AMBER = 0xff8000
+RED = 0xff0000
+BLUE = 0x0000ff
+BLACK = 0x000000
+
+SOCKET = None
+UART = None
+CHRONO = Timer.Chrono()
 RTC = machine.RTC() # Get date and time from server.
-# =============================================================================
-# Set up sensors.
-# =============================================================================
 
-#   ,-----------------------------------------------------------,
-#   | All sensors are set up here to avoid modifying code for   |
-#   | each station. Ideally, the sensor availability should be  |
-#   | determined and then used if they are present, otherwise   |
-#   | ignored.                                                  |
-#   | For this to work properly, a database of sensors and IDs  |
-#   | should be maintained as it is difficult to process UDP    |
-#   | packets that are inconsistent.                            |
-#   '-----------------------------------------------------------'
-
-#   ,-----------------------------------------------------------,
-#   | This is a dictionary to define sensor numbers from a key. |
-#   | Sensors are grouped in 5s so that more sensors may be     |
-#   | added at a later date.                                    |
-#   | These sensor ID are also encoded into the database.       |
-#   | This allows the sensor ID to be sent as part of the data  |
-#   | packet and the data inserted into the database by 'key'   |
-#   | rather than by ID.                                        |
-#   '-----------------------------------------------------------'
-sensors = {'water_temperature'    :  0,
-           'barometer_pressure'   :  5,
-           'barometer_temperature':  6,
-           'humidity_humidity'    : 10,
-           'humidity_temperature' : 11,
-           'ambient_light_0'      : 15,
-           'ambient_light_1'      : 16,
-           'ph_level'             : 20}
+# Initialisation.
+logging.basicConfig(level=log_level(), filename=True)
+logger = logging.getLogger(__name__)
+init()
 
 #   ,-----------------------------------------------------------,
 #   | These are the PySense specific sensors.                   |
@@ -202,18 +359,4 @@ logger.info("Humidity sensor present = %s.", humidity_sensor_ready)
 # =============================================================================
 # Main loop.
 # =============================================================================
-#get_time()
-logger.info("Starting Main Loop")
-CHRONO.start()
-start_time = time.time()
-error = False
-while not error:
-    check_time = time.time()
-    elapsed_time = check_time - start_time
-    if elapsed_time >= SENSOR_INTERVAL * 60:
-        try:
-            take_readings()
-        except Exception as e:
-            logger.critical("Error taking readings: {}: {}".format(type(e),e))
-            error = True
-        start_time = time.time()
+main()
