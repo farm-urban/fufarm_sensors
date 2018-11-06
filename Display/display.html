@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <link rel="stylesheet" href="http://cdn.jsdelivr.net/chartist.js/latest/chartist.min.css">
+    <script src="http://cdn.jsdelivr.net/chartist.js/latest/chartist.min.js"></script>
+    <style>
+    #maingraph {
+      width: 750px;
+      /* height: 375px; */
+    }
+    </style>
+  </head>
+  <body>
+    <p>The data from your Produce Pod is displayed below. It will be automatically updated and will display data for a full week.</p>
+
+    <table>
+    <tr><th>IP Address</th><th>Uptime (hours)</th><th>Sensors</th></tr>
+    <tr><td>50.148.123.452</td><td>72</td><td>Temperature | Humidity</td></tr>
+    </table>
+
+    <div id="maingraph" class="ct-chart ct-perfect-fourth"></div>
+    <input type="submit" value="Update" id="1234">
+
+    <p>To download the data as a csv file, please click the download button:</p>
+     <form action="/action_page.php">
+      <input type="radio" name="gender" value="male" checked>1 Week<br/>
+      <input type="radio" name="gender" value="female">2 Weeks<br/>
+      <input type="radio" name="gender" value="other">1 month<br/>
+      <br/>
+      <input type="submit" value="Submit">
+    </form>
+
+    <script>
+
+
+    var data = {
+      // A labels array that can contain any sort of values
+      labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+      // Our series array that contains series objects or in this case series data arrays
+      series: [
+        [5, 2, 4, 2, 0]
+      ]
+    };
+
+    // Create a new line chart object where as first parameter we pass in a selector
+    // that is resolving to our chart container element. The Second parameter
+    // is the actual data object.
+    var mychart = new Chartist.Line('.ct-chart', data);
+    function updateChart() {
+      mychart.update({series: [Array.from({length: 5}, () => Math.floor(Math.random() * 3))]})
+      return;
+    }
+    document.getElementById("1234").onclick = updateChart;
+    </script>
+
+  </body
+</html>
