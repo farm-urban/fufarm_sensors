@@ -9,7 +9,7 @@
       width: 90%;
       display: inline-block; /* no idea why */
     }
-    .graph-container{
+    .graph-container {
       width: auto;
       float: left;
       border: 2px;
@@ -17,6 +17,9 @@
       border-style: groove;
       padding: 10px;
       margin: 10px;
+    }
+    .graph-container > header {
+      text-align: center;
     }
     #temp_chart {
       width: 500px;
@@ -45,7 +48,7 @@
       </div>
       <div class="graph-container">
         <header>
-          <h3>Humidity (C)</h3>
+          <h3>Humidity (%)</h3>
         </header>
         <div id="humid_chart" class="ct-chart ct-perfect-fourth"></div>
       </div>
@@ -54,10 +57,10 @@
     <input style="display: block" type="submit" value="Update" id="1234">
 
     <p>To download the data as a csv file, please click the download button:</p>
-     <form action="/action_page.php">
-      <input type="radio" name="gender" value="male" checked>1 Week<br/>
-      <input type="radio" name="gender" value="female">2 Weeks<br/>
-      <input type="radio" name="gender" value="other">1 month<br/>
+     <form action="#">
+      <input type="radio" name="download" value="1week" checked>1 Week<br/>
+      <input type="radio" name="download" value="2week">2 Weeks<br/>
+      <input type="radio" name="download" value="1month">1 month<br/>
       <br/>
       <input type="submit" value="Submit">
     </form>
@@ -65,31 +68,33 @@
     <script>
 
     var len_graphs = 20;
-    var labels = [];
-    for (i=1; i <= len_graphs; i++) {
-      labels.push(i);
-    }
-    var data = {
+    var labels = Array.from(Array(len_graphs), (_,x) => x)
+
+    var data_temp = {
       labels: labels,
-      series: [  Array.from({length: len_graphs}, () => Math.floor(Math.random() * 3)) ]
+      series: [  Array.from({length: len_graphs}, () => Math.floor(Math.random() * 3) + 20) ]
+    };
+    var data_humid = {
+      labels: labels,
+      series: [  Array.from({length: len_graphs}, () => Math.floor(Math.random() * 3) + 30) ]
     };
 
-    var options1 = {
+    var options_temp = {
       low: 10,
       high: 30,
     };
-    var options2 = {
-      low: 10,
-      high: 30,
+    var options_humidity = {
+      low: 0,
+      high: 100,
     };
 
-    var temp_chart = new Chartist.Line('#temp_chart', data, options1);
-    var humid_chart = new Chartist.Line('#humid_chart', data, options2);
+    var temp_chart = new Chartist.Line('#temp_chart', data_temp, options_temp);
+    var humid_chart = new Chartist.Line('#humid_chart', data_humid, options_humidity);
 
     function updateChart() {
       temp_chart.update({series: [Array.from({length: len_graphs}, () => Math.floor((Math.random() * 3) + 20))],
                         labels: labels });
-      humid_chart.update({series: [Array.from({length: len_graphs}, () => Math.floor((Math.random() * 3) + 20))],
+      humid_chart.update({series: [Array.from({length: len_graphs}, () => Math.floor((Math.random() * 3) + 30))],
                         labels: labels });
       return;
     }
