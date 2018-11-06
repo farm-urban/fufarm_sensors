@@ -5,9 +5,26 @@
     <link rel="stylesheet" href="http://cdn.jsdelivr.net/chartist.js/latest/chartist.min.css">
     <script src="http://cdn.jsdelivr.net/chartist.js/latest/chartist.min.js"></script>
     <style>
-    #maingraph {
-      width: 750px;
-      /* height: 375px; */
+    .graph-master-container{
+      width: 90%;
+      display: inline-block; /* no idea why */
+    }
+    .graph-container{
+      width: auto;
+      float: left;
+      border: 2px;
+      border-color: black;
+      border-style: groove;
+      padding: 10px;
+      margin: 10px;
+    }
+    #temp_chart {
+      width: 500px;
+      float: left;
+    }
+    #humid_chart {
+      width: 500px;
+      float: left;
     }
     </style>
   </head>
@@ -19,8 +36,22 @@
     <tr><td>50.148.123.452</td><td>72</td><td>Temperature | Humidity</td></tr>
     </table>
 
-    <div id="maingraph" class="ct-chart ct-perfect-fourth"></div>
-    <input type="submit" value="Update" id="1234">
+    <div class="graph-master-container">
+      <div class="graph-container">
+        <header>
+          <h3>Temperature (C)</h3>
+        </header>
+        <div id="temp_chart" class="ct-chart ct-perfect-fourth"></div>
+      </div>
+      <div class="graph-container">
+        <header>
+          <h3>Humidity (C)</h3>
+        </header>
+        <div id="humid_chart" class="ct-chart ct-perfect-fourth"></div>
+      </div>
+    </div>
+
+    <input style="display: block" type="submit" value="Update" id="1234">
 
     <p>To download the data as a csv file, please click the download button:</p>
      <form action="/action_page.php">
@@ -33,22 +64,33 @@
 
     <script>
 
-
+    var len_graphs = 20;
+    var labels = [];
+    for (i=1; i <= len_graphs; i++) {
+      labels.push(i);
+    }
     var data = {
-      // A labels array that can contain any sort of values
-      labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
-      // Our series array that contains series objects or in this case series data arrays
-      series: [
-        [5, 2, 4, 2, 0]
-      ]
+      labels: labels,
+      series: [  Array.from({length: len_graphs}, () => Math.floor(Math.random() * 3)) ]
     };
 
-    // Create a new line chart object where as first parameter we pass in a selector
-    // that is resolving to our chart container element. The Second parameter
-    // is the actual data object.
-    var mychart = new Chartist.Line('.ct-chart', data);
+    var options1 = {
+      low: 10,
+      high: 30,
+    };
+    var options2 = {
+      low: 10,
+      high: 30,
+    };
+
+    var temp_chart = new Chartist.Line('#temp_chart', data, options1);
+    var humid_chart = new Chartist.Line('#humid_chart', data, options2);
+
     function updateChart() {
-      mychart.update({series: [Array.from({length: 5}, () => Math.floor(Math.random() * 3))]})
+      temp_chart.update({series: [Array.from({length: len_graphs}, () => Math.floor((Math.random() * 3) + 20))],
+                        labels: labels });
+      humid_chart.update({series: [Array.from({length: len_graphs}, () => Math.floor((Math.random() * 3) + 20))],
+                        labels: labels });
       return;
     }
     document.getElementById("1234").onclick = updateChart;
