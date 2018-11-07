@@ -18,9 +18,19 @@
       height: 500px;
       width: 500px;
      }
-    .graph-master-container{
-      width: 90%;
-      display: inline-block; /* no idea why */
+     .container {
+       width: auto;
+       display: inline-block;
+     }
+    .container header {
+      text-align: center;
+    }
+    .container h2 {
+      text-align: center;
+    }
+    .sub-container {
+      float: left;
+      display: block;
     }
     .graph-container {
       width: auto;
@@ -31,9 +41,6 @@
       padding: 10px;
       margin: 10px;
     }
-    .graph-container > header {
-      text-align: center;
-    }
     #temp_chart {
       width: 500px;
       float: left;
@@ -41,6 +48,12 @@
     #humid_chart {
       width: 500px;
       float: left;
+    }
+
+    #refresh-button {
+      display: block;
+      margin: auto;
+      clear: left;
     }
     </style>
     <!--
@@ -71,42 +84,47 @@
   </head>
   <body>
     <p>The data from your Produce Pod is displayed below. Click the update button to refresh the graphs and display the latest data.</p>
-
-    <h2>Sensor Information</h2>
-    <table>
-    <tr><th>IP Address</th><th>Uptime (hours)</th><th>Sensors</th></tr>
-    <tr><td>50.148.123.452</td><td>72</td><td>Temperature | Humidity</td></tr>
-    </table>
-
-    <h3>Location</h3>
-    <div id="map"></div>
-
+    <div class="container">
+      <h2>Sensor Information</h2>
+      <div class="sub-container">
+        <table style="margin-top: 150px">
+        <tr><th>IP Address</th><th>Uptime (hours)</th><th>Sensors</th></tr>
+        <tr><td>50.148.123.452</td><td>72</td><td>Temperature | Humidity</td></tr>
+        </table>
+      </div>
+      <div class="sub-container">
+        <div id="map"></div>
+      </div>
+  </div>
+  <br style="clear: both"/>
+  <div class="container">
     <h2>Sensor Data</h2>
-    <div class="graph-master-container">
-      <div class="graph-container">
-        <header>
-          <h3>Temperature</h3>
-        </header>
-        <div id="temp_chart" class="ct-chart ct-perfect-fourth" data-x-axis="Time (hours)" data-y-axis="Temperature (C)"></div>
-      </div>
-      <div class="graph-container">
-        <header>
-          <h3>Humidity</h3>
-        </header>
-        <div id="humid_chart" class="ct-chart ct-perfect-fourth" data-x-axis="Time (hours)" data-y-axis="Humidity (%)"></div>
-      </div>
+    <div class="graph-container">
+      <header>
+        <h3>Temperature</h3>
+      </header>
+      <div id="temp_chart" class="ct-chart ct-perfect-fourth" data-x-axis="Time (hours)" data-y-axis="Temperature (C)"></div>
     </div>
+    <div class="graph-container">
+      <header>
+        <h3>Humidity</h3>
+      </header>
+      <div id="humid_chart" class="ct-chart ct-perfect-fourth" data-x-axis="Time (hours)" data-y-axis="Humidity (%)"></div>
+    </div>
+    <input id="refresh-button" type="submit" value="Update">
+    <br/>
+    <div style="text-align: center">
+      <p>To download the data as a csv file, please click the download button:</p>
+      <form action="#">
+        <input type="radio" name="download" value="1week" checked>1 Week<br/>
+        <input type="radio" name="download" value="2week">2 Weeks<br/>
+        <input type="radio" name="download" value="1month">1 month<br/>
+        <br/>
+        <input type="submit" value="Submit">
+      </form>
+      <div>
+  </div>
 
-    <input style="display: block" type="submit" value="Update" id="1234">
-
-    <p>To download the data as a csv file, please click the download button:</p>
-     <form action="#">
-      <input type="radio" name="download" value="1week" checked>1 Week<br/>
-      <input type="radio" name="download" value="2week">2 Weeks<br/>
-      <input type="radio" name="download" value="1month">1 month<br/>
-      <br/>
-      <input type="submit" value="Submit">
-    </form>
 
     <script>
     /* OpenStreetMap Code */
@@ -120,7 +138,7 @@
       }).addTo(map);
 
       L.marker([latitude, longitude]).addTo(map)
-          .bindPopup('Liverpool Life Sciences UTC')
+          .bindPopup('IP: 50.148.123.452')
           .openPopup();
     }
     initMap();
@@ -202,7 +220,7 @@
                         labels: labels });
       return;
     }
-    document.getElementById("1234").onclick = updateChart;
+    document.getElementById("refresh-button").onclick = updateChart;
     </script>
 
   </body
