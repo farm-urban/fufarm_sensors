@@ -155,7 +155,7 @@ class Database(object):
                 self.create_database(database)
                 self.connection.database = database
             else:
-                logger.info(err)
+                logger.critical(err)
                 exit(1)
         else:
             logger.info('\tDatabase "%s" already exists.', self.connection.database)
@@ -281,7 +281,7 @@ class Database(object):
                 if err.errno == errorcode.ER_TABLE_EXISTS_ERROR:
                     logger.info('\tTable "{}" already exists.'.format(name))
                 else:
-                    logger.info(err.msg)
+                    logger.critical(err.msg)
             else:
                 logger.info('\tCreated new table "{}"'.format(name))
         return
@@ -310,7 +310,7 @@ class Database(object):
 
     def insert_value_sensor(self, name, id):
         INSERT_SENSOR = "INSERT IGNORE INTO sensors (sensor, id) VALUES (%s, %s)"
-        logger.info("ID {:2} = {}.".format(id, name))
+        logger.debug("ID {:2} = {}.".format(id, name))
         self.cursor.execute(INSERT_SENSOR, (name, id))
         self.connection.commit()
         return
@@ -318,13 +318,13 @@ class Database(object):
     def insert_value_data(self, data):
         time = data[0]
         station = data[1]
-        sensor = data[2].decode()
+        sensor = data[2]
         value = data[3]
-        logger.info("Inserting data into table.")
-        logger.info("\tTime = {}.".format(time))
-        logger.info("\tStation = {}.".format(station))
-        logger.info("\tSensor = {}.".format(sensor))
-        logger.info("\tValue = {}.".format(value))
+        logger.debug("Inserting data into table.")
+        logger.debug("\tTime = {}.".format(time))
+        logger.debug("\tStation = {}.".format(station))
+        logger.debug("\tSensor = {}.".format(sensor))
+        logger.debug("\tValue = {}.".format(value))
         INSERT_DATA = (
             "INSERT IGNORE INTO {} (time, station, reading) "
             "VALUES (%s, %s, %s)".format(sensor)
@@ -344,7 +344,7 @@ class Database(object):
             id_str = id
         else:
             id = None
-        logger.info("Station %s is %s", mac.decode(), id_str)
+        logger.debug("Station %s is %s", mac.decode(), id_str)
         return id
 
     def get_sensor_name(self, id):
@@ -354,10 +354,9 @@ class Database(object):
         name = self.cursor.fetchone()
         if name:
             name = name[0]
-            name_str = name.decode()
         else:
             name = None
-        logger.info("Sensor %s is %s", id, name_str)
+        logger.debug("Sensor %s is %s", id, name)
         return name
 
     def process_data(self, data):
@@ -373,7 +372,7 @@ class Database(object):
 
         sensor_name = self.get_sensor_name(sensor_id)
         if sensor_name:
-            logger.info("Sensor %s reading = %s", sensor_name.decode(), sensor_data)
+            logger.debug("Sensor %s reading = %s", sensor_name, sensor_data)
         # ,-------------------------------------------------------,
         # | Currently the time stamp is made here for convenience |
         # | in case the station board cannot set it's clock.      |

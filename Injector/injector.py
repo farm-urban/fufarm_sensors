@@ -43,7 +43,7 @@ def main(serial_config=None, socket_config=None, database=None,
             break
         data = connector.get_data()
         if data:
-            logger.info("Received %s bytes of sensor data.", len(data))
+            logger.debug("Received %s bytes of sensor data.", len(data))
             database.process_data(data)
         time.sleep(1)
         i += 1
@@ -52,9 +52,9 @@ def main(serial_config=None, socket_config=None, database=None,
     database.close()
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.DEBUG)
-    main(serial_config={
-        'port': '/dev/cu.usbmodemPy5a3af1',
-        'baudrate': 9600,
-        'bytesize' : 8
+    logging.basicConfig(level=logging.INFO)
+    main(socket_config={
+        'host_address': None,
+        'UDP_IP': '192.168.4.1',
+        'UDP_PORT' : 3000
         })
