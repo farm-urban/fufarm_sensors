@@ -70,6 +70,9 @@ class Logger:
     def critical(self, msg, *args):
         self.log(CRITICAL, msg, *args)
 
+    def logTraceback(self, traceback):
+        sys.print_exception(traceback)
+
 
 class FileLogger(Logger):
     """Class for logging to a file"""

@@ -32,16 +32,20 @@ logger = logging.getLogger(__name__)
 # Database access.
 # -----------------------------------------------------------------------------
 DB_CONFIG = {
-    'user': 'foo',
-    'password': 'password',
-    'host': 'localhost',
-    'database' : 'farmurban'
-    }
+    "user": "foo",
+    "password": "password",
+    "host": "localhost",
+    "database": "farmurban",
+}
+
+
 def db_config():
     """Return a copy of the DB_CONFIG as it may be altered"""
     return copy.copy(DB_CONFIG)
 
-MOCK_TABLE = 'mock'
+
+MOCK_TABLE = "mock"
+
 
 class Database(object):
     """Class for managing data in a database (currently MySQL)
@@ -93,16 +97,19 @@ class Database(object):
             | reading  | decimal(3,1)  | real      |
             '--------------------------------------'
     """
+
     MOCK_SENSOR_ID = 9999
-    sensor_id_map = {'water_temperature'     :  0,
-                     'barometer_pressure'    :  5,
-                     'barometer_temperature' :  6,
-                     'humidity_humidity'     : 10,
-                     'humidity_temperature'  : 11,
-                     'ambient_light_0'       : 15,
-                     'ambient_light_1'       : 16,
-                     'ph_level'              : 20,
-                     'mock'                  : MOCK_SENSOR_ID}
+    sensor_id_map = {
+        "water_temperature": 0,
+        "barometer_pressure": 5,
+        "barometer_temperature": 6,
+        "humidity_humidity": 10,
+        "humidity_temperature": 11,
+        "ambient_light_0": 15,
+        "ambient_light_1": 16,
+        "ph_level": 20,
+        "mock": MOCK_SENSOR_ID,
+    }
 
     def __init__(self, db_config):
         self.connection = None
@@ -113,7 +120,7 @@ class Database(object):
     def init_database(self, db_config):
         assert not (self.connection or self.cursor)
         logger.info("Initialising Database")
-        database = db_config.pop('database')
+        database = db_config.pop("database")
         self.set_connection_and_cursor(db_config)
         self.set_or_create_database(database)
         self.create_tables()
@@ -125,7 +132,9 @@ class Database(object):
             self.connection = mysql.connector.connect(**db_config)
         except mysql.connector.Error as err:
             if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
-                logger.critical("Something is wrong with your database user name or password")
+                logger.critical(
+                    "Something is wrong with your database user name or password"
+                )
                 sys.exit(1)
             elif err.errno == errorcode.ER_BAD_DB_ERROR:
                 logger.critical("Database does not exist")
@@ -142,20 +151,23 @@ class Database(object):
             self.connection.database = database
         except mysql.connector.Error as err:
             if err.errno == errorcode.ER_BAD_DB_ERROR:
-                logger.info("\tCreating new database \"%s\": ", database)
+                logger.info('\tCreating new database "%s": ', database)
                 self.create_database(database)
                 self.connection.database = database
             else:
                 logger.info(err)
                 exit(1)
         else:
-            logger.info("\tDatabase \"%s\" already exists.", self.connection.database)
+            logger.info('\tDatabase "%s" already exists.', self.connection.database)
         return
 
     def create_database(self, database):
         try:
             self.cursor.execute(
-                "CREATE DATABASE {} CHARACTER SET utf8 COLLATE utf8_bin".format(database))
+                "CREATE DATABASE {} CHARACTER SET utf8 COLLATE utf8_bin".format(
+                    database
+                )
+            )
         except mysql.connector.Error as err:
             logger.citical("\tFailed to create database: {}".format(err))
             raise
@@ -163,75 +175,115 @@ class Database(object):
 
     def create_tables(self):
         """Create the tables if they don't exist."""
-        CREATE_TABLE_STATIONS = ('CREATE TABLE ''stations''('
-                                 'mac CHAR(12) UNIQUE NOT NULL,'
-                                 'id INT NOT NULL PRIMARY KEY AUTO_INCREMENT)')
+        CREATE_TABLE_STATIONS = (
+            "CREATE TABLE "
+            "stations"
+            "("
+            "mac CHAR(12) UNIQUE NOT NULL,"
+            "id INT NOT NULL PRIMARY KEY AUTO_INCREMENT)"
+        )
 
-        CREATE_TABLE_SENSORS = ('CREATE TABLE ''sensors''('
-                                'sensor CHAR(32) UNIQUE NOT NULL,'
-                                'id SMALLINT NOT NULL)')
+        CREATE_TABLE_SENSORS = (
+            "CREATE TABLE "
+            "sensors"
+            "("
+            "sensor CHAR(32) UNIQUE NOT NULL,"
+            "id SMALLINT NOT NULL)"
+        )
 
-        CREATE_TABLE_WATER_TEMPERATURE = ('CREATE TABLE ''water_temperature''('
-                                          'time DATETIME NOT NULL PRIMARY KEY,'
-                                          'station SMALLINT,'
-                                          'reading DECIMAL(3,1))')
+        CREATE_TABLE_WATER_TEMPERATURE = (
+            "CREATE TABLE "
+            "water_temperature"
+            "("
+            "time DATETIME NOT NULL PRIMARY KEY,"
+            "station SMALLINT,"
+            "reading DECIMAL(3,1))"
+        )
 
-        CREATE_TABLE_BAROMETER_TEMPERATURE = ('CREATE TABLE ''barometer_temperature''('
-                                              'time DATETIME NOT NULL PRIMARY KEY,'
-                                              'station SMALLINT,'
-                                              'reading DECIMAL(3,1))')
+        CREATE_TABLE_BAROMETER_TEMPERATURE = (
+            "CREATE TABLE "
+            "barometer_temperature"
+            "("
+            "time DATETIME NOT NULL PRIMARY KEY,"
+            "station SMALLINT,"
+            "reading DECIMAL(3,1))"
+        )
 
-        CREATE_TABLE_HUMIDITY_HUMIDITY = ('CREATE TABLE ''humidity_humidity''('
-                                          'time DATETIME NOT NULL PRIMARY KEY,'
-                                          'station SMALLINT,'
-                                          'reading DECIMAL(3,1))')
+        CREATE_TABLE_HUMIDITY_HUMIDITY = (
+            "CREATE TABLE "
+            "humidity_humidity"
+            "("
+            "time DATETIME NOT NULL PRIMARY KEY,"
+            "station SMALLINT,"
+            "reading DECIMAL(3,1))"
+        )
 
-        CREATE_TABLE_HUMIDITY_TEMPERATURE = ('CREATE TABLE ''humidity_temperature''('
-                                             'time DATETIME NOT NULL PRIMARY KEY,'
-                                             'station SMALLINT,'
-                                             'reading DECIMAL(3,1))')
+        CREATE_TABLE_HUMIDITY_TEMPERATURE = (
+            "CREATE TABLE "
+            "humidity_temperature"
+            "("
+            "time DATETIME NOT NULL PRIMARY KEY,"
+            "station SMALLINT,"
+            "reading DECIMAL(3,1))"
+        )
 
-        CREATE_TABLE_AMBIENT_LIGHT_0 = ('CREATE TABLE ''ambient_light_0''('
-                                        'time DATETIME NOT NULL PRIMARY KEY,'
-                                        'station SMALLINT,'
-                                        'reading SMALLINT)')
+        CREATE_TABLE_AMBIENT_LIGHT_0 = (
+            "CREATE TABLE "
+            "ambient_light_0"
+            "("
+            "time DATETIME NOT NULL PRIMARY KEY,"
+            "station SMALLINT,"
+            "reading SMALLINT)"
+        )
 
-        CREATE_TABLE_AMBIENT_LIGHT_1 = ('CREATE TABLE ''ambient_light_1''('
-                                        'time DATETIME NOT NULL PRIMARY KEY,'
-                                        'station SMALLINT,'
-                                        'reading SMALLINT)')
+        CREATE_TABLE_AMBIENT_LIGHT_1 = (
+            "CREATE TABLE "
+            "ambient_light_1"
+            "("
+            "time DATETIME NOT NULL PRIMARY KEY,"
+            "station SMALLINT,"
+            "reading SMALLINT)"
+        )
 
-        CREATE_TABLE_PH_LEVEL = ('CREATE TABLE ''ph_level''('
-                                 'time DATETIME NOT NULL PRIMARY KEY,'
-                                 'station SMALLINT,'
-                                 'reading DECIMAL(2,1))')
+        CREATE_TABLE_PH_LEVEL = (
+            "CREATE TABLE "
+            "ph_level"
+            "("
+            "time DATETIME NOT NULL PRIMARY KEY,"
+            "station SMALLINT,"
+            "reading DECIMAL(2,1))"
+        )
 
-        CREATE_TABLE_MOCK = ('CREATE TABLE ''mock''('
-                             'time DATETIME NOT NULL PRIMARY KEY,'
-                             'station SMALLINT,'
-                             'reading DECIMAL(2,1))')
+        CREATE_TABLE_MOCK = (
+            "CREATE TABLE "
+            "mock"
+            "("
+            "time DATETIME NOT NULL PRIMARY KEY,"
+            "station SMALLINT,"
+            "reading DECIMAL(2,1))"
+        )
         tables = {
-            'stations' : (CREATE_TABLE_STATIONS),
-            'sensors' : (CREATE_TABLE_SENSORS),
-            'water_temperature' : (CREATE_TABLE_WATER_TEMPERATURE),
-            'barometer_temperature' : (CREATE_TABLE_BAROMETER_TEMPERATURE),
-            'humidity_humidity' : (CREATE_TABLE_HUMIDITY_HUMIDITY),
-            'humidity_temperature' : (CREATE_TABLE_HUMIDITY_TEMPERATURE),
-            'ambient_light_0' : (CREATE_TABLE_AMBIENT_LIGHT_0),
-            'ambient_light_1' : (CREATE_TABLE_AMBIENT_LIGHT_1),
-            'ph_level' : (CREATE_TABLE_PH_LEVEL),
-            'mock' : (CREATE_TABLE_MOCK)
-            }
+            "stations": (CREATE_TABLE_STATIONS),
+            "sensors": (CREATE_TABLE_SENSORS),
+            "water_temperature": (CREATE_TABLE_WATER_TEMPERATURE),
+            "barometer_temperature": (CREATE_TABLE_BAROMETER_TEMPERATURE),
+            "humidity_humidity": (CREATE_TABLE_HUMIDITY_HUMIDITY),
+            "humidity_temperature": (CREATE_TABLE_HUMIDITY_TEMPERATURE),
+            "ambient_light_0": (CREATE_TABLE_AMBIENT_LIGHT_0),
+            "ambient_light_1": (CREATE_TABLE_AMBIENT_LIGHT_1),
+            "ph_level": (CREATE_TABLE_PH_LEVEL),
+            "mock": (CREATE_TABLE_MOCK),
+        }
         for name, ddl in tables.items():
             try:
                 self.cursor.execute(ddl)
             except mysql.connector.Error as err:
                 if err.errno == errorcode.ER_TABLE_EXISTS_ERROR:
-                    logger.info("\tTable \"{}\" already exists.".format(name))
+                    logger.info('\tTable "{}" already exists.'.format(name))
                 else:
                     logger.info(err.msg)
             else:
-                logger.info("\tCreated new table \"{}\"".format(name))
+                logger.info('\tCreated new table "{}"'.format(name))
         return
 
     def populate_sensors(self):
@@ -249,7 +301,7 @@ class Database(object):
         return
 
     def insert_value_station(self, mac):
-        INSERT_STATION = ("INSERT IGNORE INTO stations (mac, id) VALUES (%s, %s)")
+        INSERT_STATION = "INSERT IGNORE INTO stations (mac, id) VALUES (%s, %s)"
         logger.info("Storing station ID for %s", mac.decode)
         station_data = (mac, "NULL")
         self.cursor.execute(INSERT_STATION, station_data)
@@ -257,7 +309,7 @@ class Database(object):
         return
 
     def insert_value_sensor(self, name, id):
-        INSERT_SENSOR = ("INSERT IGNORE INTO sensors (sensor, id) VALUES (%s, %s)")
+        INSERT_SENSOR = "INSERT IGNORE INTO sensors (sensor, id) VALUES (%s, %s)"
         logger.info("ID {:2} = {}.".format(id, name))
         self.cursor.execute(INSERT_SENSOR, (name, id))
         self.connection.commit()
@@ -273,15 +325,17 @@ class Database(object):
         logger.info("\tStation = {}.".format(station))
         logger.info("\tSensor = {}.".format(sensor))
         logger.info("\tValue = {}.".format(value))
-        INSERT_DATA = ("INSERT IGNORE INTO {} (time, station, reading) "
-                       "VALUES (%s, %s, %s)".format(sensor))
+        INSERT_DATA = (
+            "INSERT IGNORE INTO {} (time, station, reading) "
+            "VALUES (%s, %s, %s)".format(sensor)
+        )
         self.cursor.execute(INSERT_DATA, (time, station, value))
         res = self.connection.commit()
-        logger.info("Got result: %s" % res)
+        logger.debug("Got result: %s" % res)
         return
 
     def get_station_id(self, mac):
-        QUERY_STATION = ("SELECT id FROM stations WHERE mac = %s")
+        QUERY_STATION = "SELECT id FROM stations WHERE mac = %s"
         id_str = "unknown"
         self.cursor.execute(QUERY_STATION, (mac,))
         id = self.cursor.fetchone()
@@ -294,7 +348,7 @@ class Database(object):
         return id
 
     def get_sensor_name(self, id):
-        QUERY_SENSOR = ("SELECT sensor FROM sensors WHERE id = %s")
+        QUERY_SENSOR = "SELECT sensor FROM sensors WHERE id = %s"
         name_str = "unknown"
         self.cursor.execute(QUERY_SENSOR, (id,))
         name = self.cursor.fetchone()
@@ -309,9 +363,7 @@ class Database(object):
     def process_data(self, data):
         """Process a received packet of sensor data"""
         # Unpack the UDP data into it's components.
-        station_mac,\
-        sensor_id,\
-        sensor_data = struct.unpack("@12sHf", data)
+        station_mac, sensor_id, sensor_data = struct.unpack("@12sHf", data)
 
         # Store station MAC address and get ID.
         station = self.get_station_id(station_mac)
@@ -327,7 +379,9 @@ class Database(object):
         # | in case the station board cannot set it's clock.      |
         # '-------------------------------------------------------'
         read_time = datetime.now()
-        logging.debug("SENSOR DATA: %s %s %s %s", read_time, station, sensor_name, sensor_data)
+        logging.debug(
+            "SENSOR DATA: %s %s %s %s", read_time, station, sensor_name, sensor_data
+        )
         sensor_data = (read_time, station, sensor_name, sensor_data)
         self.insert_value_data(sensor_data)
         return
@@ -335,12 +389,12 @@ class Database(object):
     def reset_mock_table(self):
         """Clear the mock sensor data for testing
         """
-        query = ("TRUNCATE TABLE %s;" % MOCK_TABLE)
+        query = "TRUNCATE TABLE %s;" % MOCK_TABLE
         self.cursor.execute(query)
         self.connection.commit()
         return
 
     def get_mock_data(self):
-        query = ("SELECT * FROM %s" % MOCK_TABLE)
+        query = "SELECT * FROM %s" % MOCK_TABLE
         self.cursor.execute(query)
         return self.cursor.fetchall()

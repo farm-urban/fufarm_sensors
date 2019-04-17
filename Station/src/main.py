@@ -110,9 +110,12 @@ def send_data(sensor, value):
         logger.info("UART wrote %s bytes", nbytes)
     else:
         logger.info("Sending packet to: {}".format(CONFIG.HOST_ADDRESS))
-        SOCKET.sendto(packet, CONFIG.HOST_ADDRESS)
+        try:
+            SOCKET.sendto(packet, CONFIG.HOST_ADDRESS)
+        except OSError as e:
+            logger.critical("Error sending packet: {}".format(e))
     time.sleep(1)
-    logger.info("Finished sending data")
+    logger.info("End send_data")
     return
 
 

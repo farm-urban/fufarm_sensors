@@ -6,8 +6,8 @@ DATA_OVER_USB = False  # jmht - send data over the USB cable rather then wifi
 # =============================================================================
 # Networking.
 # =============================================================================
-NETWORK_SSID = "NameOfNetwork"  # Router broadcast name.
-NETWORK_KEY = "AardvarkBadgerHedgehog"  # Access key.
+NETWORK_SSID = "JensIsAwesome"  # Router broadcast name.
+NETWORK_KEY = "12345678"  # Access key.
 NETWORK_TIMEOUT = 20  # Connection timeout (s)
 
 STATION_MAC = None
