@@ -11,61 +11,62 @@
 <body>
   <p>The data from your Produce Pod is displayed below. Click the update button to refresh the graphs and display the latest data.</p>
   <div id="temp_chart" class="ct-chart ct-perfect-fourth" data-x-axis="Time (hours)" data-y-axis="Temperature (C)"></div>
+  <div id="light_chart" class="ct-chart ct-perfect-fourth" data-x-axis="Time (hours)" data-y-axis="Light"></div>
   <div id="log"></div>
 
   <script>
     //fetch('http://192.168.4.1/get_data.php?days=100&station=2&time_as_int=-1')
-    fetch('http://192.168.4.1/get_data.php?days=100&station=2')
+    fetch('http://192.168.4.1/get_data.php?days=100&station=2&sensor=humidity_temperature')
       .then(function(response) {
         return response.json();
       })
       .then(function(data) {
-        document.getElementById('log').innerHTML =  'data = ' + JSON.stringify(data, undefined, 2);
-        drawChart(data);
+        drawChart(data, '#temp_chart');
       });
+
+      fetch('http://192.168.4.1/get_data.php?days=100&station=2&sensor=ambient_light_0')
+        .then(function(response) {
+          return response.json();
+        })
+        .then(function(data) {
+          drawChart(data, '#light_chart');
+        });
+
+    function drawChart(data, chart_id) {
+
+      var chartist_options = {
+        axisX: {
+          type: Chartist.FixedScaleAxis,
+          divisor: 5,
+          labelInterpolationFnc: function(value, x, y) {
+            return moment(value).format('MMM D');
+          }
+        }
+      };
+
+      var time_data = dataToDateSeries(data);
+      //document.getElementById('log').innerHTML =  'dataX = ' + JSON.stringify(time_data, undefined, 2);
+      var temp_chart = new Chartist.Line(chart_id, time_data, chartist_options);
+    }
 
 
     function dataToDateSeries(data) {
-        var new_series =   [{
-            name: 'ticks',
-            data: []
-        }];
+      var new_series = [{
+        name: 'ticks',
+        data: []
+      }];
+      for (i = 0; i < data['labels'].length; i++) {
         // Need to multiply dates by 1000 to deal with difference between PHP and JS UTC timestamps
-        for (i=0; i < data['labels'].length; i++ ) {
-            let ddate =  new Date(data['labels'][i] * 1000);
-            new_series[0].data.push({x: ddate, y: data['series'][0][i]});
-        };
-        data.series = new_series;
-        return data;
+        let ddate = new Date(data['labels'][i] * 1000);
+        new_series[0].data.push({
+          x: ddate,
+          y: data['series'][0][i]
+        });
+      };
+      data.series = new_series;
+      return data;
     }
 
-    function drawChart(data) {
-
-    /* Now graph data */
-    var len_graphs = 20;
-    var labels = Array.from(Array(len_graphs), (_, x) => x)
-
-    var data_temp = {
-      labels: labels,
-      series: [Array.from({
-        length: len_graphs
-      }, () => Math.floor(Math.random() * 3) + 20)]
-    };
-
-    var options_temp = {
-  axisX: {
-    type: Chartist.FixedScaleAxis,
-    divisor: 5,
-    labelInterpolationFnc: function(value, x, y) {
-      return moment(value).format('MMM D');
-    }
-  }
-};
-
-    var time_data = dataToDateSeries(data);
-    //document.getElementById('log').innerHTML =  'dataX = ' + JSON.stringify(time_data, undefined, 2);
-    var temp_chart = new Chartist.Line('#temp_chart', time_data, options_temp);
-    }
   </script>
 </body>
 
