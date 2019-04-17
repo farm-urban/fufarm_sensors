@@ -10,38 +10,24 @@ function sensor_data_as_json($station, $sensor, $date_query, $time_as_int){
   $db_result = mysqli_query($db_handle, $db_query);
   if (!$db_result)
   {
-      print "Error: Unable to query table." . $sensor . "<br>";
+      print "Error: Unable to find data for query:" . $db_query . "\n";
       exit;
   }
   // Define the table columns, i.e. what the x and y data actually are.
-  $table = array();
-  $time_type = ($time_as_int ? 'number': "datetime");
-  $table['cols'] = array(
-      array('label' => 'Time',  'type' => $time_type),
-      array('label' => 'Reading', 'type' => 'number')
-  );
-  $rows = array();
-  // This populates the rows, i.e. the actual x and y data.
-  $i = 0;
+  $gdata = array();
+  $gdata['labels'] = array();
+  $gdata['series'] = array();
+  $gdata['series'][] = array();
   while($r = mysqli_fetch_assoc($db_result))
   {
-      $temp = array();
-      /* The MySQL datetime format needs to be broken down and reformatted
-         for Google Charts.  The Javascript API months start at 0, whereas
-          MySQL starts at 1! */
       if ($time_as_int) {
-        $temp[] = array('v' => $i);
+        $gdata['labels'][] = $i;
       } else {
-        $date1 = strtotime($r['time'] . " -1 Month");
-        $date2 = "Date(" . date("Y,m,d,H,i,s", $date1) . ")";
-        $temp[] = array('v' => $date2);
+        $gdata['labels'][] = strtotime($r['time']);
       }
-      $temp[] = array('v' => $r['reading']);
-      $rows[] = array('c' => $temp);
-      $i++;
+      $gdata['series'][0][] = (float)$r['reading'];
   }
-  $table['rows'] = $rows;
-  $json_data = json_encode($table);
+  $json_data = json_encode($gdata);
   // echo $json_data; // Uncomment to dump the entire table
   mysqli_free_result($db_result);
   return $json_data;
@@ -59,7 +45,7 @@ function sensor_data_as_json($station, $sensor, $date_query, $time_as_int){
 
   // Get variables from request
   $station = (isset($_REQUEST["station"]) ? $_REQUEST["station"]: "1");
-  $sensor = (isset($_REQUEST["sensor"]) ? $_REQUEST["sensor"]: "water_temperature");
+  $sensor = (isset($_REQUEST["sensor"]) ? $_REQUEST["sensor"]: "ambient_light_0");
   $days = (isset($_REQUEST["days"]) ? $_REQUEST["days"]: "5");
   $time_as_int = false;
   if (isset($_REQUEST["time_as_int"])) {
