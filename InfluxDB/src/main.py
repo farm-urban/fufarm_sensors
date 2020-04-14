@@ -198,7 +198,7 @@ while True:
         data += "\n"
 
     print('sending data\n{}'.format(data))
-    influx_url = 'http://rpi.local:8086/write?db=mydb'
+    influx_url = 'http://192.168.0.7:8086/write?db=fudata'
     success = False
     number_of_retries = 3
     while not success and number_of_retries > 0:
