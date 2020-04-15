@@ -43,6 +43,17 @@ def take_readings():
              'ambient_light_1' : l1 }
 
 
+def readings_to_influxdb_line(readings, station_id):
+    data = ""
+    for k, v in readings.items():
+        data += 'fu_sensor,stationid={},sensor={} value={}' \
+               .format(station_id,k,v)
+        if include_timestamp is True:
+            data += ' {}000000000'.format(rtc.now())
+        data += "\n"
+    return data
+
+
 NETWORK_CONFIG_STR = """Network config:
 IP          : {0}
 Subnet mask : {1}
@@ -56,10 +67,10 @@ LED = {'amber' : 0xFF8000,
        'green' : 0x00FF00,
        'red'   : 0xFF0000 }
 
-NETWORK_SSID = "virginmedia7305656"  # Router broadcast name.
-NETWORK_KEY = "vbvnqjxn"  # Access key.
+NETWORK_SSID = "virginmedia7305656"
+NETWORK_KEY = "vbvnqjxn" 
 NTP_ADDRESS = "pool.ntp.org"
-SENSOR_INTERVAL = 60 * 10  # in seconds
+SENSOR_INTERVAL = 10  # in seconds
 STATION_MAC = binascii.hexlify(machine.unique_id()).decode("utf-8")
 
 rtc = machine.RTC()  # Get date and time from server.
@@ -72,7 +83,7 @@ wlan = WLAN(mode=WLAN.STA)
 nets = wlan.scan()
 for net in nets:
     if net.ssid == NETWORK_SSID:
-        print('Network found!')
+        print('Found network: {}'.format(NETWORK_SSID))
         wlan.connect(net.ssid, auth=(net.sec, NETWORK_KEY), timeout=5000)
         while not wlan.isconnected():
             machine.idle() # save power while waiting
@@ -85,22 +96,14 @@ if rtc.synced():
 
 include_timestamp = ntp_synced
 while True:
-    d = take_readings()
-    data = ""
-    for k, v in d.items():
-        # k = CONFIG.SENSORS[k]
-        data += 'fu_sensor,stationid={},sensor={} value={}' \
-               .format(STATION_MAC,k,v)
-        if include_timestamp is True:
-            data += ' {}000000000'.format(rtc.now())
-        data += "\n"
-    print('sending data\n{}'.format(data))
+    iline = readings_to_influxdb_line(take_readings(), STATION_MAC)
+    print('sending data\n{}'.format(iline))
     influx_url = 'http://192.168.0.7:8086/write?db=fudata'
     success = False
     number_of_retries = 3
     while not success and number_of_retries > 0:
         try:
-            urequests.post(influx_url, data=data)
+            urequests.post(influx_url, data=iline)
             success = True
         except OSError as e:
             print('network error: {}'.format(e.errno))
