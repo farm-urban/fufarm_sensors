@@ -95,23 +95,25 @@ light_sensor = LTR329ALS01(board)
 barometer = MPL3115A2(board, mode=PRESSURE)
 humidity_sensor = SI7006A20(board)
 
+ntp_synced = False
 wlan = WLAN(mode=WLAN.STA)
 nets = wlan.scan()
 for net in nets:
     if net.ssid == NETWORK_SSID:
         print('Found network: {}'.format(NETWORK_SSID))
         wlan.connect(net.ssid, auth=(net.sec, NETWORK_KEY), timeout=5000)
-        while not wlan.isconnected():
-            machine.idle() # save power while waiting
+        # while not wlan.isconnected():
+        #     machine.idle() # save power while waiting
         print(NETWORK_CONFIG_STR.format(*wlan.ifconfig()))
         # pycom.rgbled(LED['green'])
 
+if not wlan.isconnected():
+    reset_wlan()
+
 rtc.ntp_sync(NTP_SERVER)
-ntp_synced = False
 if rtc.synced():
     ntp_synced = True
 
-#reset_wlan()
 # initialise Ultrasonic Sensor pins
 us_trigger_pin = Pin('P4', mode=Pin.OUT)
 us_echo_pin = Pin('P10', mode=Pin.IN, pull=Pin.PULL_DOWN)
