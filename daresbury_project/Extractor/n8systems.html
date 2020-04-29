@@ -1,0 +1,73 @@
+<html>
+
+<head>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/chartist.js/latest/chartist.min.css">
+  <script src="https://cdn.jsdelivr.net/chartist.js/latest/chartist.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartist-plugin-axistitle@0.0.4/dist/chartist-plugin-axistitle.min.js"></script>
+  <script src="https://unpkg.com/leaflet@1.3.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/moment@2.24.0/moment.min.js"></script>
+</head>
+
+<body>
+  <p>The data from your Produce Pod is displayed below. Click the update button to refresh the graphs and display the latest data.</p>
+  <div id="temp_chart" class="ct-chart ct-perfect-fourth" data-x-axis="Time (hours)" data-y-axis="Temperature (C)"></div>
+  <div id="light_chart" class="ct-chart ct-perfect-fourth" data-x-axis="Time (hours)" data-y-axis="Light"></div>
+  <div id="log"></div>
+
+  <script>
+    //fetch('http://192.168.4.1/get_data.php?days=100&station=2&time_as_int=-1')
+    fetch('http://192.168.4.1/get_data.php?days=100&station=2&sensor=humidity_temperature')
+      .then(function(response) {
+        return response.json();
+      })
+      .then(function(data) {
+        drawChart(data, '#temp_chart');
+      });
+
+      fetch('http://192.168.4.1/get_data.php?days=100&station=2&sensor=ambient_light_0')
+        .then(function(response) {
+          return response.json();
+        })
+        .then(function(data) {
+          drawChart(data, '#light_chart');
+        });
+
+    function drawChart(data, chart_id) {
+
+      var chartist_options = {
+        axisX: {
+          type: Chartist.FixedScaleAxis,
+          divisor: 5,
+          labelInterpolationFnc: function(value, x, y) {
+            return moment(value).format('MMM D');
+          }
+        }
+      };
+
+      var time_data = dataToDateSeries(data);
+      //document.getElementById('log').innerHTML =  'dataX = ' + JSON.stringify(time_data, undefined, 2);
+      var temp_chart = new Chartist.Line(chart_id, time_data, chartist_options);
+    }
+
+
+    function dataToDateSeries(data) {
+      var new_series = [{
+        name: 'ticks',
+        data: []
+      }];
+      for (i = 0; i < data['labels'].length; i++) {
+        // Need to multiply dates by 1000 to deal with difference between PHP and JS UTC timestamps
+        let ddate = new Date(data['labels'][i] * 1000);
+        new_series[0].data.push({
+          x: ddate,
+          y: data['series'][0][i]
+        });
+      };
+      data.series = new_series;
+      return data;
+    }
+
+  </script>
+</body>
+
+</html>
