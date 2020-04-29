@@ -153,14 +153,12 @@ def debug(msg, *args):
     getLogger(None).debug(msg, *args)
 
 
-def basicConfig(level=INFO, filename=None, stream=None, format=None, rtc=None):
+def basicConfig(level=INFO, filename=None, stream=None, rtc=None):
     global _level, _stream, _logger_cls, _rtc
     _level = level
     if stream:
         _stream = stream
     if rtc:
         _rtc = rtc
-    if filename:
+    if filename is not None:
         _logger_cls = FileLogger
-    if format is not None:
-        print("logging.basicConfig: format arg is not supported")
