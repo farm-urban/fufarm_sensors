@@ -305,7 +305,7 @@ def main():
     while True:
         check_time = time.time()
         elapsed_time = check_time - start_time
-        if elapsed_time >= CONFIG.SENSOR_INTERVAL * 60:
+        if elapsed_time >= CONFIG.SENSOR_INTERVAL:
             take_readings()
             start_time = time.time()
     return
@@ -327,8 +327,10 @@ CHRONO = Timer.Chrono()
 RTC = machine.RTC()  # Get date and time from server.
 
 # Initialisation.
+print("RUNING MAIN")
 logging.basicConfig(level=log_level(), filename=None)
 logger = logging.getLogger(__name__)
+print("SETUP LOGGER")
 try:
     init()
 except Exception as e:
