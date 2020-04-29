@@ -27,6 +27,14 @@ tags (indexed):
 stationid
 sensor
 
+# Log in to influxdb and setup database and measurement
+create database farmdb
+use farmdb
+
+
+
+
+
 Line protocol
 https://docs.influxdata.com/influxdb/v1.7/write_protocols/line_protocol_tutorial/
 
@@ -41,10 +49,11 @@ curl -i -XPOST "http://localhost:8086/write?db=science_is_cool" --data-binary 'w
 https://github.com/ayoy/upython-aq-monitor
 
 
-Set up network
+# HC SRO4 sensor stuff
+# HR-SR04+ is to work at 3V (https://cpc.farnell.com/multicomp-pro/psg04176/ultrasonic-distance-sensor/dp/SN36937)
 
-get data form sensors
+# also https://core-electronics.com.au/tutorials/hc-sr04-ultrasonic-sensor-with-pycom-tutorial.html
+https://github.com/mithru/MicroPython-Examples/tree/master/08.Sensors/HC-SR04
 
-send to osx influxdb
 
     # "address": "/dev/cu.usbmodemPy5a3af1",
