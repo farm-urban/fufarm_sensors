@@ -6,7 +6,7 @@ DATA_OVER_USB = False  # jmht - send data over the USB cable rather then wifi
 # =============================================================================
 # Networking.
 # =============================================================================
-NETWORK_SSID = "JensIsAwesome"  # Router broadcast name.
+NETWORK_SSID = "FUsensors"  # Router broadcast name.
 NETWORK_KEY = "12345678"  # Access key.
 NETWORK_TIMEOUT = 20  # Connection timeout (s)
 
@@ -25,7 +25,7 @@ HOST_ADDRESS = (HOST_NAME, HOST_PORT)
 
 NTP_AVAILABLE = False  # NTP server available?
 NTP_ADDRESS = "pool.ntp.org"
-SENSOR_INTERVAL = 0.2
+SENSOR_INTERVAL = 60 * 10  # in seconds
 
 #   ,-----------------------------------------------------------,
 #   | All sensors are set up here to avoid modifying code for   |
