@@ -11,6 +11,21 @@ Plug in OTG USB cable to middle USB port and then login with:
 ssh pi@raspberrypi.local
 ```
 
+#### Set editor and make sure it's kept during sudo
+```
+~/.profile
+EDITOR=/usr/bin/vi
+sudo visudo
+Defaults env_keep += "EDITOR"
+```
+
+
+## OPENVPN
+**NEED TO ADD INSTRUCTIONS HERE OR IN OTHER DOC**
+
+sudo systemctl status openvpn-client@rpizero1
+
+
 # Raspbery Pi as AP
 [Raspberry Pi Documentation](https://www.raspberrypi.org/documentation/configuration/wireless/access-point-routed.md])
 
@@ -149,6 +164,7 @@ https://superuser.com/questions/1272705/wifi-single-radio-acting-as-ap-and-ap-cl
 https://www.raspberrypi.org/forums/viewtopic.php?f=36&t=138730&sid=9b945f0b20a96d90875f80c1c8c06e8e
 https://superuser.com/questions/615664/creating-wifi-access-point-on-a-single-interface-in-linux
 https://imti.co/iot-wifi/
+https://www.raspberrypi.org/forums/viewtopic.php?t=191306
 
 
 #### Create Interface
@@ -187,7 +203,9 @@ Backup **/etc/dnsmasq.conf** and create new file with:
 interface=lo,uap0
 no-dhcp-interface=lo,wlan0
 bind-interfaces
-#server=8.8.8.8
+server=8.8.8.8
+domain-needed
+bogus-priv
 dhcp-range=192.168.4.100,192.168.4.200,255.255.255.0,24h
 ```
 
@@ -228,6 +246,12 @@ This is requried because of a bug with the way the interfaces are started - we w
 ```
 sudo systemctl disable wpa_supplicant
 ```
+
+**COULD INSTEAD TRY CHANGING DEFAULT wpa_supplicant TO TURN ON LATER?**
+sudo systemctl edit --full wpa_supplicant@wlan0
+
+SET $SYSTEMD_EDITOR
+
 
 Create file: **/etc/systemd/system/wpa_supplicant_hack.service**
 ```
