@@ -4,6 +4,7 @@ import machine
 import utime
 from machine import Pin
 from network import WLAN
+import sys
 
 import hcsr04
 import urequests
@@ -13,11 +14,11 @@ from MPL3115A2 import MPL3115A2, PRESSURE  # Barometer and temperature
 from SI7006A20 import SI7006A20  # Humidity & temperature.
 
 
-LED = {'amber' : 0xFF8000,
-       'black' : 0x000000,
-       'blue'  : 0x0000FF,
-       'green' : 0x00FF00,
-       'red'   : 0xFF0000 }
+LED = { 'amber' : 0xFF8000,
+        'black' : 0x000000,
+        'blue'  : 0x0000FF,
+        'green' : 0x00FF00,
+        'red'   : 0xFF0000 }
 
 NETWORK_CONFIG_STR = """Network config:
 IP          : {0}
@@ -54,13 +55,14 @@ def internal_sensor_readings():
     # pycom.rgbled(LED['black'])
 
 
-def readings_to_influxdb_line(readings, station_id, include_timestamp=True):
+def readings_to_influxdb_line(readings, station_id, include_timestamp=False):
     data = ""
     for k, v in readings.items():
         data += 'fu_sensor,stationid={},sensor={} measurement={}' \
                .format(station_id,k,v)
         if include_timestamp is True:
-            data += ' {}000000000'.format(rtc.now())
+            timestamp = utime.mktime(rtc.now())
+            data += ' {}000000000'.format(timestamp)
         data += "\n"
     return data
 
@@ -88,12 +90,14 @@ NETWORK_SSID = "FUsensors"
 NETWORK_KEY = "12345678"
 INFLUX_URL = 'http://192.168.4.1:8086/write?db=farmdb'
 NTP_SERVER = 'pool.ntp.org'
-SAMPLE_WINDOW = 10
+SAMPLE_WINDOW = 60 * 10
 HAVE_EXTERNAL_SENSORS = False
 
 if not HAVE_EXTERNAL_SENSORS:
     hcsr04.MOCK = True
 
+pycom.heartbeat(False)
+pycom.rgbled(LED['amber'])
 rtc = machine.RTC()  # Get date and time from server.
 board = Pysense()
 light_sensor = LTR329ALS01(board)
@@ -107,13 +111,14 @@ for net in nets:
     if net.ssid == NETWORK_SSID:
         print('Found network: {}'.format(NETWORK_SSID))
         wlan.connect(net.ssid, auth=(net.sec, NETWORK_KEY), timeout=5000)
-        # while not wlan.isconnected():
-        #     machine.idle() # save power while waiting
+        while not wlan.isconnected():
+            machine.idle() # save power while waiting
         print(NETWORK_CONFIG_STR.format(*wlan.ifconfig()))
-        # pycom.rgbled(LED['green'])
+        pycom.rgbled(LED['green'])
 
 if not wlan.isconnected():
-    reset_wlan()
+    pycom.rgbled(LED['red'])
+    raise RuntimeError("Cannot find network!")
 
 rtc.ntp_sync(NTP_SERVER)
 if rtc.synced():
@@ -140,16 +145,16 @@ while True:
     distance_samples = []
     loop_time = sample_start
     while utime.time() < sample_end:
-        # The flow rate is calcualted using the callback within this loop
+        # The flow rate is calculated using the callback within this loop
         #print(echo(), end='')
         if utime.time() - loop_time >= distance_sample_interval:
             distance_samples.append(hcsr04.distance_measure(us_trigger_pin, us_echo_pin))
             loop_time = utime.time()
+    pycom.rgbled(LED['blue'])
     readings = internal_sensor_readings()
     readings['distance'] = hcsr04.distance_median(distance_samples)
     readings['flow_rate'] = flow_rate(SAMPLE_WINDOW)
-
-    iline = readings_to_influxdb_line(readings, STATION_MAC)
+    iline = readings_to_influxdb_line(readings, STATION_MAC, include_timestamp=include_timestamp)
     print('sending data\n{}'.format(iline))
     success = False
     number_of_retries = 3
@@ -162,4 +167,9 @@ while True:
             print('network error: {}'.format(e.errno))
             number_of_retries -= 1
             pass
-    # pycom.rgbled(LED['black'])
+    if success:
+        pycom.rgbled(LED['green'])
+    else:
+        pycom.rgbled(LED['red'])
+    utime.sleep(5)
+    pycom.rgbled(LED['black'])
