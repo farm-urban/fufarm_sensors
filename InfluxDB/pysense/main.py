@@ -81,13 +81,18 @@ def rate_pin_cb(arg):
 
 STATION_MAC = binascii.hexlify(machine.unique_id()).decode("utf-8")
 
-
-NETWORK_SSID = "virginmedia7305656"
-NETWORK_KEY = "vbvnqjxn"
-INFLUX_URL = 'http://192.168.0.7:8086/write?db=farmdb'
+# NETWORK_SSID = "virginmedia7305656"
+# NETWORK_KEY = "vbvnqjxn"
+# INFLUX_URL = 'http://192.168.0.7:8086/write?db=farmdb'
+NETWORK_SSID = "FUsensors"
+NETWORK_KEY = "12345678"
+INFLUX_URL = 'http://192.168.4.1:8086/write?db=farmdb'
 NTP_SERVER = 'pool.ntp.org'
 SAMPLE_WINDOW = 10
+HAVE_EXTERNAL_SENSORS = False
 
+if not HAVE_EXTERNAL_SENSORS:
+    hcsr04.MOCK = True
 
 rtc = machine.RTC()  # Get date and time from server.
 board = Pysense()

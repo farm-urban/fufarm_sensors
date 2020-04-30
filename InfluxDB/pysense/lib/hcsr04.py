@@ -1,5 +1,6 @@
 import utime
 
+MOCK = False
 
 def distance_measure(trigger_pin, echo_pin, timeout = 100000):
     """Ultrasonic distance measurement using HR-SO4
@@ -14,6 +15,9 @@ def distance_measure(trigger_pin, echo_pin, timeout = 100000):
     https://github.com/mithru/MicroPython-Examples/blob/master/08.Sensors/HC-SR04/ultrasonic.py
     https://github.com/gpiozero/gpiozero/blob/master/gpiozero/input_devices.py
     """
+    if MOCK:
+        return 0.0
+
     # trigger pulse LOW for 2us (just in case)
     trigger_pin(0)
     utime.sleep_us(2)
@@ -50,6 +54,8 @@ def distance_measure(trigger_pin, echo_pin, timeout = 100000):
     return distance
 
 def distance_median(distance_samples):
+    if MOCK:
+        return 0
     #print("DISTANCE_MEDIAN measuring ",distance_samples)
     distance_samples = sorted(distance_samples)
     distance_median = distance_samples[int(len(distance_samples)/2)]
