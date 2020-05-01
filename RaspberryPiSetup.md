@@ -11,7 +11,7 @@ Plug in OTG USB cable to middle USB port and then login with:
 ssh pi@raspberrypi.local
 ```
 
-#### Set editor and make sure it's kept during sudo
+### Set editor and make sure it's kept during sudo
 ```
 ~/.profile
 EDITOR=/usr/bin/vi
@@ -23,7 +23,7 @@ Defaults env_keep += "EDITOR"
 ## OPENVPN
 **NEED TO ADD INSTRUCTIONS HERE OR IN OTHER DOC**
 
-sudo systemctl status openvpn-client@rpizero1
+sudo systemctl enable openvpn-client@rpizero1
 
 
 # Raspbery Pi as AP
@@ -42,7 +42,7 @@ network={
 ```
 
 
-#### Install/enable software to work as access point
+### Install/enable software to work as access point
 ```
 sudo apt install hostapd
 sudo systemctl unmask hostapd
@@ -50,7 +50,7 @@ sudo systemctl enable hostapd
 sudo apt install dnsmasq
 ```
 
-#### Wireless Interface Configuration
+### Wireless Interface Configuration
 This requires deciding on the network to manage: (192.168.4.1/24)
 
 Edit: **/etc/dhcpcd.conf**
@@ -65,7 +65,7 @@ sudo service dhcpcd restart
 ```
 ??? Warning: The unit file, source configuration file or drop-ins of dhcpcd.service changed on disk. Run 'systemctl daemon-reload' to reload units.
 
-#### Enable routing and IP masquerading
+### Enable routing and IP masquerading
 **NB:** Don't think this first bit is required if using ufw
 
 Edit: **/etc/sysctl.d/routed-ap.conf**
@@ -122,7 +122,7 @@ Now enable the changes by restarting ufw.
 $ sudo ufw disable && sudo ufw enable
 ```
 
-#### Configure the DHCP and DNS services for the wireless network
+### Configure the DHCP and DNS services for the wireless network
 
 Backup **/etc/dnsmasq.conf** and create new file with:
 ```
@@ -132,7 +132,7 @@ dhcp-range=192.168.4.2,192.168.4.20,255.255.255.0,24h # Pool of IP addresses ser
 #domain=wlan # Local wireless DNS domain
 #address=/gw.wlan/192.168.4.1 # Alias for this router
 ```
- #### Configure the access point software
+ ### Configure the access point software
  Edit **/etc/hostapd/hostapd.conf**
 ```
 interface=wlan0
@@ -151,7 +151,7 @@ wpa_pairwise=TKIP
 rsn_pairwise=CCMP
 ```
 
-#### Reboot
+### Reboot
 ```
 sudo systemctl reboot
 ```
@@ -166,8 +166,10 @@ https://superuser.com/questions/615664/creating-wifi-access-point-on-a-single-in
 https://imti.co/iot-wifi/
 https://www.raspberrypi.org/forums/viewtopic.php?t=191306
 
+https://github.com/peebles/rpi3-wifi-station-ap-stretch
 
-#### Create Interface
+
+### Create Interface
 Create file: **/etc/udev/rules.d/90-wireless.rules**
 ```
 ACTION=="add", SUBSYSTEM=="ieee80211", KERNEL=="phy0", \
@@ -184,7 +186,7 @@ iface uap0 inet static
 ```
 
 
-#### Wireless Interface Configuration
+### Wireless Interface Configuration
 This requires deciding on the network to manage: (192.168.4.1/24)
 
 Edit: **/etc/dhcpcd.conf**
@@ -196,7 +198,7 @@ interface uap0
 static ip_address=192.168.4.1/24 # Not sure if needed?
 ```
 
-#### Configure the DHCP and DNS services for the wireless network
+### Configure the DHCP and DNS services for the wireless network
 Backup **/etc/dnsmasq.conf** and create new file with:
 
 ```
@@ -209,7 +211,7 @@ bogus-priv
 dhcp-range=192.168.4.100,192.168.4.200,255.255.255.0,24h
 ```
 
-#### Configure the access point software
+### Configure the access point software
  Edit **/etc/hostapd/hostapd.conf**
 ```
 interface=uap0
@@ -228,9 +230,9 @@ wpa_pairwise=TKIP
 rsn_pairwise=CCMP
 ```
 
-#### Setup wireless access as STA
+### Setup wireless access as STA
 Delete: **/etc/wpa_supplicant/wpa_supplicant.conf**
-Created: **/etc/wpa_supplicant/wpa_supplicant-wlan0.conf**
+Create: **/etc/wpa_supplicant/wpa_supplicant-wlan0.conf**
 ```
 ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
 #ap_scan=1
@@ -241,26 +243,24 @@ network={
 }
 ```
 
-**Disable default wpa_supplicant**
-This is requried because of a bug with the way the interfaces are started - we will instead create our own service that we will start later.
+### Hack for wpa_supplicant
+This is requried because of a bug with the drivers - I think. The cure is to restart the wpa_supplicant servie on wlan0 after a pause and everything else has come up
 ```
 sudo systemctl disable wpa_supplicant
 ```
 
-**COULD INSTEAD TRY CHANGING DEFAULT wpa_supplicant TO TURN ON LATER?**
-sudo systemctl edit --full wpa_supplicant@wlan0
-
-SET $SYSTEMD_EDITOR
-
-
 Create file: **/etc/systemd/system/wpa_supplicant_hack.service**
 ```
 [Unit]
-Description=WPA Supplicant hack
-After=network.target
+Description=Service to restart wpa_supplicant@wlan0
+After=wpa_supplicant@wlan0.service
 
 [Service]
-ExecStart=wpa_supplicant -c/etc/wpa_supplicant/wpa_supplicant-wlan0.conf -iwlan0 -Dnl80211,wext
+Type=simple
+ExecStartPre=/bin/sh -c 'sleep 10'
+ExecStart=/bin/systemctl restart wpa_supplicant@wlan0.service
+#StandardOutput=file:/var/log/wpa_supplicant_hack.log
+#StandardError=file:/var/log/wpa_supplicant_hack.log
 
 [Install]
 WantedBy=multi-user.target
@@ -270,7 +270,6 @@ WantedBy=multi-user.target
 sudo systemctl daemon-reload
 sudo systemctl enable wpa_supplicant_hack
 ```
-
 
 
 ### Use UFW to manage Masquerading
