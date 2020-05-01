@@ -118,6 +118,7 @@ for net in nets:
 
 if not wlan.isconnected():
     pycom.rgbled(LED['red'])
+    reset_wlan()
     raise RuntimeError("Cannot find network!")
 
 rtc.ntp_sync(NTP_SERVER)
