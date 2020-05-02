@@ -259,8 +259,8 @@ Create file: **/usr/local/bin/restart_wpa_supplicant.sh**
 ping -I wlan0 -c 1 -t 1  www.google.co.uk > /dev/null 2>&1
 if [ $? -ne 0 ]
 then
-    echo "Restarting wpa_supplicant on wlan0"
-    #/bin/systemctl restart wpa_supplicant@wlan0.service
+    echo "Restarting wpa_supplicant on wlan0 and openvpn"
+    /bin/systemctl restart wpa_supplicant@wlan0.service && sudo systemctl status  openvpn-client@rpizero1.service
 fi
 ```
 
