@@ -38,8 +38,19 @@ def reset_wlan(wlan=None):
         # wlan.deinit()
         wlan.init(**args)
     else:
-        WLAN(**args)   
+        WLAN(**args)
     return
+
+def connect_wireless(wlan):
+    nets = wlan.scan()
+    for net in nets:
+        if net.ssid == NETWORK_SSID:
+            print('Found network: {}'.format(NETWORK_SSID))
+            wlan.connect(net.ssid, auth=(net.sec, NETWORK_KEY), timeout=5000)
+            while not wlan.isconnected():
+                machine.idle() # save power while waiting
+            print(NETWORK_CONFIG_STR.format(*wlan.ifconfig()))
+    return wlan.isconnected()
 
 
 def internal_sensor_readings():
@@ -54,6 +65,20 @@ def internal_sensor_readings():
              'ambient_light_1' : l1 }
     # pycom.rgbled(LED['black'])
 
+def send_data(iline):
+    print('sending data\n{}'.format(iline))
+    success = False
+    number_of_retries = 3
+    while not success and number_of_retries > 0:
+        try:
+            # pycom.rgbled(LED['blue'])
+            urequests.post(INFLUX_URL, data=iline)
+            success = True
+        except OSError as e:
+            print('network error: {}'.format(e.errno))
+            number_of_retries -= 1
+            pass
+    return success
 
 def readings_to_influxdb_line(readings, station_id, include_timestamp=False):
     data = ""
@@ -106,24 +131,13 @@ humidity_sensor = SI7006A20(board)
 
 ntp_synced = False
 wlan = WLAN(mode=WLAN.STA)
-nets = wlan.scan()
-for net in nets:
-    if net.ssid == NETWORK_SSID:
-        print('Found network: {}'.format(NETWORK_SSID))
-        wlan.connect(net.ssid, auth=(net.sec, NETWORK_KEY), timeout=5000)
-        while not wlan.isconnected():
-            machine.idle() # save power while waiting
-        print(NETWORK_CONFIG_STR.format(*wlan.ifconfig()))
-        pycom.rgbled(LED['green'])
-
-if not wlan.isconnected():
+connect_wireless(wlan)
+if wlan.isconnected():
+    rtc.ntp_sync(NTP_SERVER)
+    if rtc.synced():
+        ntp_synced = True
+else:
     pycom.rgbled(LED['red'])
-    reset_wlan()
-    raise RuntimeError("Cannot find network!")
-
-rtc.ntp_sync(NTP_SERVER)
-if rtc.synced():
-    ntp_synced = True
 
 # initialise Ultrasonic Sensor pins
 us_trigger_pin = Pin('P4', mode=Pin.OUT)
@@ -139,15 +153,27 @@ rate_cnt = 0
 sample_end = 0
 distance_sample_interval = 1
 include_timestamp = ntp_synced
+notification_sleep = 5
+loop_count = 0
 while True:
+    loop_count += 1
+    print("Running loop ",loop_count)
+    if not wlan.isconnected():
+        print("Lost network connection")
+        connect_wireless(wlan)
+        if not wlan.isconnected():
+            pycom.rgbled(LED['red'])
+            utime.sleep(SAMPLE_WINDOW)
+            continue
+        else:
+            pycom.rgbled(LED['black'])
     sample_start = utime.time()
-    sample_end = sample_start + SAMPLE_WINDOW
+    sample_end = sample_start + (SAMPLE_WINDOW - notification_sleep)
     rate_cnt = 0
     distance_samples = []
     loop_time = sample_start
     while utime.time() < sample_end:
         # The flow rate is calculated using the callback within this loop
-        #print(echo(), end='')
         if utime.time() - loop_time >= distance_sample_interval:
             distance_samples.append(hcsr04.distance_measure(us_trigger_pin, us_echo_pin))
             loop_time = utime.time()
@@ -156,21 +182,10 @@ while True:
     readings['distance'] = hcsr04.distance_median(distance_samples)
     readings['flow_rate'] = flow_rate(SAMPLE_WINDOW)
     iline = readings_to_influxdb_line(readings, STATION_MAC, include_timestamp=include_timestamp)
-    print('sending data\n{}'.format(iline))
-    success = False
-    number_of_retries = 3
-    while not success and number_of_retries > 0:
-        try:
-            # pycom.rgbled(LED['blue'])
-            urequests.post(INFLUX_URL, data=iline)
-            success = True
-        except OSError as e:
-            print('network error: {}'.format(e.errno))
-            number_of_retries -= 1
-            pass
+    success = send_data(iline)
     if success:
         pycom.rgbled(LED['green'])
     else:
-        pycom.rgbled(LED['red'])
-    utime.sleep(5)
+        pycom.rgbled(LED['orange'])
+    utime.sleep(notification_sleep)
     pycom.rgbled(LED['black'])
