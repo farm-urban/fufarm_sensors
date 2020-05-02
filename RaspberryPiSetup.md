@@ -196,6 +196,10 @@ nohook wpa_supplicant   # don't call the wpa_supplicant hook
 
 interface uap0
 static ip_address=192.168.4.1/24 # Not sure if needed?
+
+# DNS suddenly stopped working on wlan0 - no idea why - so this required
+interface wlan0
+static domain_name_servers=8.8.8.8
 ```
 
 ### Configure the DHCP and DNS services for the wireless network
@@ -260,13 +264,14 @@ ping -I wlan0 -c 1 -t 1  www.google.co.uk > /dev/null 2>&1
 if [ $? -ne 0 ]
 then
     echo "Restarting wpa_supplicant on wlan0 and openvpn"
-    /bin/systemctl restart wpa_supplicant@wlan0.service && sudo systemctl status  openvpn-client@rpizero1.service
+    #/bin/systemctl restart wpa_supplicant@wlan0.service && sudo systemctl restart  openvpn-client@rpizero1.service
+    /bin/systemctl restart wpa_supplicant@wlan0.service 
 fi
 ```
 
 ```
 sudo crontab -e
-*/5 * * * * /usr/local/bin/restart_wpa_supplicant.sh
+*/5 * * * * /usr/local/bin/restart_wpa_supplicant.sh | /usr/bin/logger -t jmht_wpa
 ```
 
 ### Use UFW to manage Masquerading
