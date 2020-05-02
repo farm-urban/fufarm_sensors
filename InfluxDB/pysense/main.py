@@ -136,8 +136,6 @@ if wlan.isconnected():
     rtc.ntp_sync(NTP_SERVER)
     if rtc.synced():
         ntp_synced = True
-else:
-    pycom.rgbled(LED['red'])
 
 # initialise Ultrasonic Sensor pins
 us_trigger_pin = Pin('P4', mode=Pin.OUT)
@@ -156,6 +154,7 @@ include_timestamp = ntp_synced
 notification_sleep = 5
 loop_count = 0
 while True:
+    pycom.heartbeat(True)
     loop_count += 1
     print("Running loop ",loop_count)
     if not wlan.isconnected():
@@ -165,8 +164,6 @@ while True:
             pycom.rgbled(LED['red'])
             utime.sleep(SAMPLE_WINDOW)
             continue
-        else:
-            pycom.rgbled(LED['black'])
     sample_start = utime.time()
     sample_end = sample_start + (SAMPLE_WINDOW - notification_sleep)
     rate_cnt = 0
@@ -188,4 +185,3 @@ while True:
     else:
         pycom.rgbled(LED['orange'])
     utime.sleep(notification_sleep)
-    pycom.rgbled(LED['black'])
