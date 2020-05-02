@@ -244,33 +244,30 @@ network={
 ```
 
 ### Hack for wpa_supplicant
-This is requried because of a bug with the drivers - I think. The cure is to restart the wpa_supplicant servie on wlan0 after a pause and everything else has come up
+This is requried because of a bug with the drivers - the different interfaces seem to fight with each other. The fix seems to be to restart the wpa_supplicant deamon.
+# Not sure if the below actually required or could just continue with default wpa_supplicant?
 ```
 sudo systemctl disable wpa_supplicant
+sudo systemctl enabl wpa_supplicant@wlan0
 ```
 
-Create file: **/etc/systemd/system/wpa_supplicant_hack.service**
+Create file: **/usr/local/bin/restart_wpa_supplicant.sh**
 ```
-[Unit]
-Description=Service to restart wpa_supplicant@wlan0
-After=wpa_supplicant@wlan0.service
-
-[Service]
-Type=simple
-ExecStartPre=/bin/sh -c 'sleep 10'
-ExecStart=/bin/systemctl restart wpa_supplicant@wlan0.service
-#StandardOutput=file:/var/log/wpa_supplicant_hack.log
-#StandardError=file:/var/log/wpa_supplicant_hack.log
-
-[Install]
-WantedBy=multi-user.target
+#!/bin/bash
+# nc quicker but need to specify interace with ip
+#nc -zw 2 www.google.co.uk 81 > /dev/null 2>&1
+ping -I wlan0 -c 1 -t 1  www.google.co.uk > /dev/null 2>&1
+if [ $? -ne 0 ]
+then
+    echo "Restarting wpa_supplicant on wlan0"
+    #/bin/systemctl restart wpa_supplicant@wlan0.service
+fi
 ```
 
 ```
-sudo systemctl daemon-reload
-sudo systemctl enable wpa_supplicant_hack
+sudo crontab -e
+*/5 * * * * /usr/local/bin/restart_wpa_supplicant.sh
 ```
-
 
 ### Use UFW to manage Masquerading
 From: https://gist.github.com/kimus/9315140
