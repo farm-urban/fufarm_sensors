@@ -161,6 +161,7 @@ while True:
         print("Lost network connection")
         connect_wireless(wlan)
         if not wlan.isconnected():
+            pycom.heartbeat(False)
             pycom.rgbled(LED['red'])
             utime.sleep(SAMPLE_WINDOW)
             continue
@@ -174,6 +175,7 @@ while True:
         if utime.time() - loop_time >= distance_sample_interval:
             distance_samples.append(hcsr04.distance_measure(us_trigger_pin, us_echo_pin))
             loop_time = utime.time()
+    pycom.heartbeat(False)
     pycom.rgbled(LED['blue'])
     readings = internal_sensor_readings()
     readings['distance'] = hcsr04.distance_median(distance_samples)
