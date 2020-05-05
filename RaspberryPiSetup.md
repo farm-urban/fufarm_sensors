@@ -10,6 +10,24 @@ Plug in OTG USB cable to middle USB port and then login with:
 ```
 ssh pi@raspberrypi.local
 ```
+```
+[Unit]
+Description=Farm Monitor Script
+After=network.target
+
+[Service]
+Environment="CAMERA=v4l2"
+ExecStart=/usr/bin/python2 /home/pi/flask-video-streaming-linucks/app.py
+WorkingDirectory=/home/pi/flask-video-streaming-linucks
+StandardOutput=inherit
+StandardError=inherit
+Restart=always
+User=pi
+
+[Install]
+WantedBy=multi-user.target
+```
+
 
 ### Set editor and make sure it's kept during sudo
 ```
@@ -235,12 +253,29 @@ rsn_pairwise=CCMP
 ```
 
 ### Setup wireless access as STA
+Need to spoof MAC address to work on UTC
+
+Create: **/etc/systemd/network/00-mac.link**
+```
+[Match]
+OriginalName=wlan0
+
+[Link]
+MACAddress=b8:27:eb:bb:5d:9b
+NamePolicy=kernel database onboard slot path
+```
+
 Delete: **/etc/wpa_supplicant/wpa_supplicant.conf**
 Create: **/etc/wpa_supplicant/wpa_supplicant-wlan0.conf**
 ```
 ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
 #ap_scan=1
-#update_config=1
+update_config=1
+network={
+	ssid="LLS_BYOD"
+	key_mgmt=NONE
+}
+
 network={
     ssid="virginmedia7305656"
     psk="vbvnqjxn"
@@ -265,7 +300,7 @@ if [ $? -ne 0 ]
 then
     echo "Restarting wpa_supplicant on wlan0 and openvpn"
     #/bin/systemctl restart wpa_supplicant@wlan0.service && sudo systemctl restart  openvpn-client@rpizero1.service
-    /bin/systemctl restart wpa_supplicant@wlan0.service 
+    /bin/systemctl restart wpa_supplicant@wlan0.service
 fi
 ```
 
@@ -329,7 +364,7 @@ sudo systemctl stop dnsmasq
 #wpa-conf /etc/wpa_supplicant/wpa_supplicant.conf
 sudo wpa_cli -i wlan0 reconfigure
 sudo systemctl stop wpa_supplicant
-sudo wpa_supplicant -d -iwlan0 -c /etc/wpa_supplicant/wpa_supplicant-wlan0.conf 
+sudo wpa_supplicant -d -iwlan0 -c /etc/wpa_supplicant/wpa_supplicant-wlan0.conf
 sudo systemctl edit --full wpa_supplicant@wlan0
 sudo /etc/init.d/networking restart
 sudo ifconfig wlan0 down
