@@ -28,10 +28,11 @@ SAMPLE_WINDOW = 60 * 5
 MOCK = False
 rate_cnt = 0
 
+
 def send_data(iline):
     print('sending data\n{}'.format(iline))
     if MOCK:
-       return
+        return
     success = False
     number_of_retries = 3
     while not success and number_of_retries > 0:
@@ -44,11 +45,12 @@ def send_data(iline):
             pass
     return success
 
+
 def readings_to_influxdb_line(readings, station_id, include_timestamp=False):
     data = ""
     for k, v in readings.items():
         data += 'fu_sensor,stationid={},sensor={} measurement={}' \
-               .format(station_id,k,v)
+               .format(station_id, k, v)
         if include_timestamp is True:
             timestamp = utime.mktime(rtc.now())
             data += ' {}000000000'.format(timestamp)
@@ -59,16 +61,18 @@ def readings_to_influxdb_line(readings, station_id, include_timestamp=False):
 def count_paddle():
     global rate_cnt
     rate_cnt += 1
-    #print("button was pressed")
+    # print("button was pressed")
+
 
 def flow_rate(sample_window):
     return rate_cnt
+
 
 btn = DigitalInputDevice(22)
 btn.when_activated = count_paddle
 
 factory = PiGPIOFactory()
-sensor = DistanceSensor(trigger=17, echo=27, pin_factory=factory)
+sensor = DistanceSensor(trigger=17, echo=27, pin_factory=factory, queue_len=20)
 
 readings = {}
 while True:
@@ -78,7 +82,7 @@ while True:
     while time.time() < sample_end:
         pass
     readings['flow_rate'] = flow_rate(SAMPLE_WINDOW)
-    time.sleep(1) # Need to add in pause or the distance sensor or else it measures 0.0
+    time.sleep(2)  # Need to add in pause or the distance sensor or else it measures 0.0
     readings['distance'] = sensor.distance
     iline = readings_to_influxdb_line(readings, STATION_MAC)
     success = send_data(iline)
