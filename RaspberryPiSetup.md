@@ -278,12 +278,11 @@ Create file: **/usr/local/bin/restart_wpa_supplicant.sh**
 # nc quicker but need to specify interace with ip
 #nc -zw 2 www.google.co.uk 81 > /dev/null 2>&1
 #ping -I wlan0 -c 1  www.google.co.uk > /dev/null 2>&1
-ip -4 addr show wlan0 | grep -oP '(?<=Xinet\s)\d+(\.\d+){3}' > /dev/null 2>&1
+ip -4 addr show wlan0 | grep -oP '(?<=inet\s)\d+(\.\d+){3}' > /dev/null 2>&1
 if [ $? -ne 0 ]
 then
     echo "Restarting wpa_supplicant on wlan0
     /bin/systemctl restart wpa_supplicant@wlan0.service
-fin/systemctl restart wpa_supplicant@wlan0.service
 fi
 ```
 

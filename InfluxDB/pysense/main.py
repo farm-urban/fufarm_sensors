@@ -112,7 +112,9 @@ def rate_pin_cb(arg):
         rate_cnt += 1
 
 
-STATION_MAC = binascii.hexlify(machine.unique_id()).decode("utf-8")
+STATION_MAC = 'prop_tray'
+if STATION_MAC is None:
+    STATION_MAC = binascii.hexlify(machine.unique_id()).decode("utf-8")
 
 # NETWORK_SSID = "virginmedia7305656"
 # NETWORK_KEY = "vbvnqjxn"
