@@ -19,6 +19,21 @@ sudo visudo
 Defaults env_keep += "EDITOR"
 ```
 
+### Use UFW as firewall
+```
+sudo apt-get install ufw
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+sudo ufw allow 22
+sudo ufw allow 80
+sudo ufw allow 443
+sudo ufw allow 5666 # nagios monitoring from memset
+sudo ufw enable
+
+```
+
+
+
 
 ## OPENVPN
 **NEED TO ADD INSTRUCTIONS HERE OR IN OTHER DOC**
