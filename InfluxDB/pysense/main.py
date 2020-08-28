@@ -1,8 +1,10 @@
 import binascii
 import pycom
 import machine
+import uos
 import utime
 from machine import Pin
+from machine import SD
 from network import WLAN
 
 import hcsr04
@@ -12,11 +14,24 @@ from LTR329ALS01 import LTR329ALS01  # Ambient Light
 from MPL3115A2 import MPL3115A2, PRESSURE  # Barometer and temperature
 from SI7006A20 import SI7006A20  # Humidity & temperature.
 
+
+STATION_MAC = 'lfarm_2'
+NETWORK_SSID = "FUsensors"
+NETWORK_KEY = "12345678"
+INFLUX_URL = 'http://192.168.4.1:8086/write?db=farmdb'
+NTP_SERVER = 'pool.ntp.org'
+SAMPLE_WINDOW = 60 * 10
+HAVE_EXTERNAL_SENSORS = False
+MOUNTPOINT = '/sd'
+PATHSEP = "/"
+HAVE_SD = False
+
 LED = {
     'amber': 0xFF8000,
     'black': 0x000000,
     'blue': 0x0000FF,
     'green': 0x00FF00,
+    'orange': 0xFFA500,
     'red': 0xFF0000
 }
 
@@ -70,6 +85,27 @@ def internal_sensor_readings():
     }
 
 
+def take_readings(sample_window, have_external_sensors=False, distance_sample_interval=1):
+    global rate_count, us_trigger_pin, us_echo_pin, LED
+    sample_start = utime.time()
+    sample_end = sample_start + sample_window
+    rate_count = 0
+    distance_samples = []
+    sample_time = sample_start
+    while utime.time() < sample_end:
+        # The flow rate is calculated using the callback within this loop
+        if utime.time() - sample_time >= distance_sample_interval:
+            if have_external_sensors:
+                distance_samples.append(
+                    hcsr04.distance_measure(us_trigger_pin, us_echo_pin))
+            sample_time = utime.time()
+    readings = internal_sensor_readings()
+    if have_external_sensors:
+        readings['distance'] = hcsr04.distance_median(distance_samples)
+        readings['flow_rate'] = flow_rate(sample_window)
+    return readings
+
+
 def send_data(iline):
     print('sending data\n{}'.format(iline))
     success = False
@@ -80,7 +116,7 @@ def send_data(iline):
             urequests.post(INFLUX_URL, data=iline)
             success = True
         except OSError as e:
-            print('network error: {}'.format(e.errno))
+            print('network error: {}'.format(e))
             number_of_retries -= 1
             pass
     return success
@@ -98,33 +134,61 @@ def readings_to_influxdb_line(readings, station_id, include_timestamp=False):
     return data
 
 
+def next_logfile(name_stem='logfile'):
+    MAX_FILENAMES = 100
+    count = 0
+    while True:
+        name = "{}_{}.csv".format(name_stem, count)
+        logfile_path = MOUNTPOINT + PATHSEP + name
+        file_exists = True
+        try:
+            uos.stat(logfile_path)
+        except OSError:
+            file_exists = False
+        if not file_exists:
+            break
+        count += 1
+        if count > MAX_FILENAMES:
+            raise RuntimeError("Too many logfiles! {0}".format(logfile_path))
+    return logfile_path
+
+
+def init_logfile(readings, station_id):
+    " Open the csv logfile and initialise it with the headings"
+    logfile_path = next_logfile()
+    logfile = open(logfile_path, 'w')
+    headings = ['timestamp', 'stationid'] + sorted(readings.keys())
+    logfile.write(",".join(headings) + "\n")
+    logfile.flush()
+    return logfile
+
+
+def write_readings_to_logfile(logfile, readings, station_id):
+    timestamp = str(utime.mktime(rtc.now()))
+    values = [timestamp, station_id] + [str(readings[k]) for k in sorted(readings.keys())]
+    logfile.write(",".join(values) + "\n")
+    logfile.flush()
+    return
+
+
 def flow_rate(sample_window):
-    """Calculate and return flow rate based on rate_cnt variable"""
-    global rate_cnt
-    return rate_cnt
+    """Calculate and return flow rate based on rate_count variable"""
+    global rate_count
+    return rate_count
 
 
 def rate_pin_cb(arg):
-    """Increment rate_cnt"""
+    """Increment rate_count"""
     # print("got an interrupt in pin %s value %s" % (arg.id(), arg()))
-    global rate_cnt, rate_pin_id
+    global rate_count, rate_pin_id
     if arg.id() == rate_pin_id:
-        rate_cnt += 1
+        rate_count += 1
 
-
-STATION_MAC = 'prop_tray'
+################################################################################
+# Start Script
+################################################################################
 if STATION_MAC is None:
     STATION_MAC = binascii.hexlify(machine.unique_id()).decode("utf-8")
-
-# NETWORK_SSID = "virginmedia7305656"
-# NETWORK_KEY = "vbvnqjxn"
-# INFLUX_URL = 'http://192.168.0.7:8086/write?db=farmdb'
-NETWORK_SSID = "FUsensors"
-NETWORK_KEY = "12345678"
-INFLUX_URL = 'http://192.168.4.1:8086/write?db=farmdb'
-NTP_SERVER = 'pool.ntp.org'
-SAMPLE_WINDOW = 60 * 10
-HAVE_EXTERNAL_SENSORS = False
 
 if not HAVE_EXTERNAL_SENSORS:
     hcsr04.MOCK = True
@@ -157,9 +221,20 @@ if HAVE_EXTERNAL_SENSORS:
     # transition and log that, as it doens't matter if it's going 1->0 or 0->1
     rate_pin.callback(Pin.IRQ_FALLING, rate_pin_cb)
 
-rate_cnt = 0
-sample_end = 0
-distance_sample_interval = 1
+# Setup SD card
+try:
+    sd = SD()
+    HAVE_SD = True
+except OSError:
+    print("No disk available")
+
+if HAVE_SD:
+    uos.mount(sd, MOUNTPOINT)
+    readings = take_readings(3, have_external_sensors=HAVE_EXTERNAL_SENSORS)
+    print("Setting up logfile")
+    logfile = init_logfile(readings, STATION_MAC)
+
+rate_count = 0
 include_timestamp = ntp_synced
 notification_sleep = 5
 loop_count = 0
@@ -171,32 +246,18 @@ while True:
         print("Lost network connection")
         connect_wireless(wlan)
         if not wlan.isconnected():
-            pycom.heartbeat(False)
-            pycom.rgbled(LED['red'])
-            utime.sleep(SAMPLE_WINDOW)
-            continue
-    sample_start = utime.time()
-    sample_end = sample_start + (SAMPLE_WINDOW - notification_sleep)
-    rate_cnt = 0
-    distance_samples = []
-    loop_time = sample_start
-    while utime.time() < sample_end:
-        # The flow rate is calculated using the callback within this loop
-        if utime.time() - loop_time >= distance_sample_interval:
-            if HAVE_EXTERNAL_SENSORS:
-                distance_samples.append(
-                    hcsr04.distance_measure(us_trigger_pin, us_echo_pin))
-            loop_time = utime.time()
+            print("Could not reconnect to network")
+    readings = take_readings(SAMPLE_WINDOW,
+                             have_external_sensors=HAVE_EXTERNAL_SENSORS)
+    if HAVE_SD:
+        write_readings_to_logfile(logfile, readings, STATION_MAC)
+    success = False
+    if wlan.isconnected():
+        iline = readings_to_influxdb_line(readings,
+                                          STATION_MAC,
+                                          include_timestamp=include_timestamp)
+        success = send_data(iline)
     pycom.heartbeat(False)
-    pycom.rgbled(LED['blue'])
-    readings = internal_sensor_readings()
-    if HAVE_EXTERNAL_SENSORS:
-        readings['distance'] = hcsr04.distance_median(distance_samples)
-        readings['flow_rate'] = flow_rate(SAMPLE_WINDOW)
-    iline = readings_to_influxdb_line(readings,
-                                      STATION_MAC,
-                                      include_timestamp=include_timestamp)
-    success = send_data(iline)
     if success:
         pycom.rgbled(LED['green'])
     else:
