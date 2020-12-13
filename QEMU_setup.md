@@ -1,4 +1,4 @@
-# Running Ubuntu under QEMU
+## Running Ubuntu under QEMU
 
 Notes from:
 * https://graspingtech.com/ubuntu-desktop-18.04-virtual-machine-macos-qemu/
@@ -33,6 +33,12 @@ qemu-system-x86_64 \
 ## Raspberry Pi Setup
 https://raspberrypi.stackexchange.com/questions/100384/running-raspbian-buster-with-qemu
 https://blog.agchapman.com/using-qemu-to-emulate-a-raspberry-pi/
+https://github.com/guysoft/CustomPiOS
+https://medium.com/@r.robipozzi/use-ansible-to-automate-installation-and-deployment-of-raspberry-boxes-cfe04ac10ce6\
+https://opensource.com/article/20/9/raspberry-pi-ansible
+https://github.com/kenfallon/fix-ssh-on-pi
+https://github.com/jonashackt/raspberry-ansible
+https://hackernoon.com/raspberry-pi-cluster-emulation-with-docker-compose-xo3l3tyw
 
 1. Download Server lite image
 2. Mount image from linux and extract kernel and dtd files, or download from: https://github.com/dhruvvyas90/qemu-rpi-kernel/
