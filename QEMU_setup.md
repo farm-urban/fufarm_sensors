@@ -49,7 +49,7 @@ https://hackernoon.com/raspberry-pi-cluster-emulation-with-docker-compose-xo3l3t
 qemu-system-arm \
   -drive "file=./2020-12-02-raspios-buster-armhf-lite.img,if=none,index=0,media=disk,format=raw,id=disk0" \
   -device "virtio-blk-pci,drive=disk0,disable-modern=on,disable-legacy=off" \
-  -nic user \
+  -nic user,hostfwd=tcp::5555-:22 \ # user networking and allow ssh on local machine 5555
   -no-reboot \
   -M versatilepb -cpu arm1176 -m 256 \
   -dtb ./versatile-pb-buster.dtb \
