@@ -417,3 +417,13 @@ server {
     }
 }
 ```
+
+## Actual sequence of commands
+sudo apt-get update
+sudo apt-get upgrade
+
+# 
+sudo apt install hostapd
+sudo systemctl unmask hostapd
+sudo systemctl enable hostapd
+sudo apt install dnsmasq
