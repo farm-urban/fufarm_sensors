@@ -367,3 +367,40 @@ sudo /etc/init.d/networking restart
 sudo ifconfig wlan0 down
 sudo ifconfig wlan0 up
 ```
+
+## Setting up webcams
+Need to install motion
+
+/etc/motion/motion.conf - changed settings
+```
+< daemon on
+#v4l2_palette 17
+v4l2_palette 9
+width 640
+height 480
+framerate 60
+output_pictures off
+ffmpeg_output_movies off
+target_dir /home/pi
+stream_maxrate 10
+stream_localhost off
+stream_localhost on
+```
+camera2.conf
+```
+# /etc/motion/camera2.conf
+camera_id = 2
+videodevice /dev/v4l/by-id/usb-AVEO_Technology_Corp._USB2.0_Camera-video-index0
+v4l2_palette 15
+
+width 320
+height 240
+
+text_left CAMERA 2
+picture_filename CAM2_%v-%Y%m%d%H%M%S-%q
+
+framerate 5
+stream_port 8082
+# Maximum framerate for stream streams (default: 1)
+stream_maxrate 3
+```
