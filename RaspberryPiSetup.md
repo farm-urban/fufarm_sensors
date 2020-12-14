@@ -404,3 +404,16 @@ stream_port 8082
 # Maximum framerate for stream streams (default: 1)
 stream_maxrate 3
 ```
+
+Then need to use nginx to proxy to the 8081 port of the raspberry pi:
+
+```
+/etc/nginx/sites-available/influxdb
+server {
+    listen 192.168.4.1:8086;
+    server_name _;
+    location / {
+        proxy_pass http://10.8.0.1:8086;
+    }
+}
+```
