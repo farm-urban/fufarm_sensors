@@ -12,36 +12,30 @@ ssh pi@raspberrypi.local
 ```
 
 ### Set editor and make sure it's kept during sudo
+Add to ```~/.profile```
 ```
-~/.profile
-EDITOR=/usr/bin/vi
+set -o emacs
+export EDITOR=/usr/bin/vi
+```
+
+Then keep for sudo
+```
 sudo visudo
 Defaults env_keep += "EDITOR"
 ```
 
-### Use UFW as firewall
-```
-sudo apt-get install ufw
-sudo ufw default deny incoming
-sudo ufw default allow outgoing
-sudo ufw allow 22
-sudo ufw allow 80
-sudo ufw allow 443
-sudo ufw allow 5666 # nagios monitoring from memset
-sudo ufw enable
+# Configure Raspberry Pi as AP, and also combined AP and STA
 
+## Install/enable software to work as access point
+```
+sudo apt install hostapd
+sudo systemctl unmask hostapd
+sudo systemctl enable hostapd
+sudo apt install dnsmasq
 ```
 
 
-
-
-## OPENVPN
-**NEED TO ADD INSTRUCTIONS HERE OR IN OTHER DOC**
-
-sudo systemctl enable openvpn-client@rpizero1
-
-
-# Raspbery Pi as AP
+## Raspbery Pi as AP
 [Raspberry Pi Documentation](https://www.raspberrypi.org/documentation/configuration/wireless/access-point-routed.md])
 
 **/etc/wpa_supplicant/wpa_supplicant.conf**
@@ -57,14 +51,6 @@ network={
 ```
 
 
-### Install/enable software to work as access point
-```
-sudo apt install hostapd
-sudo systemctl unmask hostapd
-sudo systemctl enable hostapd
-sudo apt install dnsmasq
-```
-
 ### Wireless Interface Configuration
 This requires deciding on the network to manage: (192.168.4.1/24)
 
@@ -74,68 +60,7 @@ interface wlan0
     static ip_address=192.168.4.1/24
     nohook wpa_supplicant
 ```
-Reload
-```
-sudo service dhcpcd restart
-```
-??? Warning: The unit file, source configuration file or drop-ins of dhcpcd.service changed on disk. Run 'systemctl daemon-reload' to reload units.
 
-### Enable routing and IP masquerading
-**NB:** Don't think this first bit is required if using ufw
-
-Edit: **/etc/sysctl.d/routed-ap.conf**
-```
-# https://www.raspberrypi.org/documentation/configuration/wireless/access-point-routed.md
-# Enable IPv4 routing
-net.ipv4.ip_forward=1
-```
-
-### Use UFW to manage Masqurading
-From: https://gist.github.com/kimus/9315140
-And: https://mike632t.wordpress.com/2019/02/02/configuring-a-linux-wireless-access-point/
-
-
-In the file **/etc/default/ufw** change the parameter DEFAULT_FORWARD_POLICY
-
-```
-DEFAULT_FORWARD_POLICY="ACCEPT"
-```
-
-Also configure **/etc/ufw/sysctl.conf** to allow ipv4 forwarding (the parameters is commented out by default). Uncomment for ipv6 if you want.
-
-```
-net.ipv4.ip_forward=1
-#net/ipv6/conf/default/forwarding=1
-#net/ipv6/conf/all/forwarding=1
-```
-
-
-The final step is to add NAT to ufw’s configuration. Add the following to /etc/ufw/before.rules just before the filter rules.
-
-```
-# NAT table rules
-*nat
-:POSTROUTING ACCEPT [0:0]
-
-# Forward traffic through eth0 - Change to match you out-interface
--A POSTROUTING -s 192.168.4.1/24 -o eth0 -j MASQUERADE
-
-# don't delete the 'COMMIT' line or these nat table rules won't
-# be processed
-COMMIT
-```
-
-Set up rules to allow incoming connections for DNS and DHCP queries.
-```
-sudo ufw allow in on wlan0 from any port 68 to any port 67 proto udp
-sudo ufw allow in on wlan0 from 192.168.4.1/24 to any port 53
-```
-
-Now enable the changes by restarting ufw.
-
-```
-$ sudo ufw disable && sudo ufw enable
-```
 
 ### Configure the DHCP and DNS services for the wireless network
 
@@ -147,8 +72,11 @@ dhcp-range=192.168.4.2,192.168.4.20,255.255.255.0,24h # Pool of IP addresses ser
 #domain=wlan # Local wireless DNS domain
 #address=/gw.wlan/192.168.4.1 # Alias for this router
 ```
- ### Configure the access point software
- Edit **/etc/hostapd/hostapd.conf**
+
+### Configure the access point software
+
+Edit **/etc/hostapd/hostapd.conf**
+
 ```
 interface=wlan0
 driver=nl80211
@@ -166,11 +94,6 @@ wpa_pairwise=TKIP
 rsn_pairwise=CCMP
 ```
 
-### Reboot
-```
-sudo systemctl reboot
-```
-
 
 # Raspbery Pi as AP and STA
 Rather then using the wlan0 that was set up above as the AP interface we create a virtual interface called uap0.
@@ -180,7 +103,6 @@ https://www.raspberrypi.org/forums/viewtopic.php?f=36&t=138730&sid=9b945f0b20a96
 https://superuser.com/questions/615664/creating-wifi-access-point-on-a-single-interface-in-linux
 https://imti.co/iot-wifi/
 https://www.raspberrypi.org/forums/viewtopic.php?t=191306
-
 https://github.com/peebles/rpi3-wifi-station-ap-stretch
 
 
@@ -199,7 +121,6 @@ iface uap0 inet static
     address 192.168.4.1
     netmask 255.255.255.0
 ```
-
 
 ### Wireless Interface Configuration
 This requires deciding on the network to manage: (192.168.4.1/24)
@@ -249,19 +170,6 @@ wpa_pairwise=TKIP
 rsn_pairwise=CCMP
 ```
 
-### Setup wireless access as STA
-Need to spoof MAC address to work on UTC
-
-Create: **/etc/systemd/network/00-mac.link**
-```
-[Match]
-OriginalName=wlan0
-
-[Link]
-MACAddress=b8:27:eb:bb:5d:9b
-NamePolicy=kernel database onboard slot path
-```
-
 Delete: **/etc/wpa_supplicant/wpa_supplicant.conf**
 Create: **/etc/wpa_supplicant/wpa_supplicant-wlan0.conf**
 ```
@@ -274,8 +182,8 @@ network={
 }
 
 network={
-    ssid="virginmedia7305656"
-    psk="vbvnqjxn"
+    ssid="foo"
+    psk="bar"
 }
 ```
 
@@ -306,7 +214,18 @@ sudo crontab -e
 */5 * * * * /usr/local/bin/restart_wpa_supplicant.sh | /usr/bin/logger -t jmht_wpa
 ```
 
-### Use UFW to manage Masquerading
+## Commands for both types of Setup
+
+### Use UFW as firewall
+```
+sudo apt-get install ufw
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+sudo ufw allow 22
+sudo ufw enable
+```
+
+### Use UFW to manage routing and IP masquerading
 From: https://gist.github.com/kimus/9315140
 And: https://mike632t.wordpress.com/2019/02/02/configuring-a-linux-wireless-access-point/
 
@@ -321,8 +240,20 @@ Also configure **/etc/ufw/sysctl.conf** to allow ipv4 forwarding (the parameters
 
 ```
 net.ipv4.ip_forward=1
-#net/ipv6/conf/default/forwarding=1
-#net/ipv6/conf/all/forwarding=1
+```
+
+Alternative format
+```
+net/ipv4/ip_forward=1
+```
+
+
+** DON'T THINK BELOW REQUIRED DUE TO ufc sysctl.conf parameter? **
+Edit: **/etc/sysctl.d/routed-ap.conf**
+```
+# https://www.raspberrypi.org/documentation/configuration/wireless/access-point-routed.md
+# Enable IPv4 routing
+net.ipv4.ip_forward=1
 ```
 
 
@@ -342,16 +273,19 @@ COMMIT
 ```
 
 Set up rules to allow incoming connections for DNS and DHCP queries.
+CHANGE INTERFACE wlan0 to uap0 for COMBINED
 ```
-sudo ufw allow in on uap0 from any port 68 to any port 67 proto udp
-sudo ufw allow in on uap0 from 192.168.4.1/24 to any port 53
+sudo ufw allow in on wlan0 from any port 68 to any port 67 proto udp
+sudo ufw allow in on wlan0 from 192.168.4.1/24 to any port 53
 ```
 
-Now enable the changes by restarting ufw.
 
-```
-$ sudo ufw disable && sudo ufw enable
-```
+## OPENVPN
+**NEED TO ADD INSTRUCTIONS HERE OR IN OTHER DOC**
+
+sudo systemctl enable openvpn-client@rpizero1
+
+
 
 ## Debugging/Maintainence commands
 ```
@@ -422,8 +356,109 @@ server {
 sudo apt-get update
 sudo apt-get upgrade
 
-# 
+#  Install software
 sudo apt install hostapd
 sudo systemctl unmask hostapd
 sudo systemctl enable hostapd
 sudo apt install dnsmasq
+
+# Create interface
+sudo bash -c 'cat <<EOF >  /etc/udev/rules.d/90-wireless.rules
+ACTION=="add", SUBSYSTEM=="ieee80211", KERNEL=="phy0", \
+ RUN+="/sbin/iw phy %k interface add uap0 type __ap"
+EOF'
+
+sudo bash -c 'cat <<EOF > /etc/network/interfaces.d/ap
+allow-hotplug uap0
+auto uap0
+iface uap0 inet static
+    address 192.168.4.1
+    netmask 255.255.255.0
+EOF'
+
+sudo bash -c 'cat <<EOF >> /etc/dhcpcd.conf
+
+# Wireless AP
+interface uap0
+nohook wpa_supplicant  # dont call the wpa_supplicant hook
+static ip_address=192.168.4.1/24 # Not sure if needed?
+EOF'
+
+# Configure the DHCP and DNS services for the wireless network
+sudo cp /etc/dnsmasq.conf /etc/dnsmasq.conf.bak
+sudo bash -c 'cat <<EOF > /etc/dnsmasq.conf
+interface=lo,uap0
+no-dhcp-interface=lo,wlan0
+bind-interfaces
+server=8.8.8.8
+domain-needed
+bogus-priv
+dhcp-range=192.168.4.100,192.168.4.200,255.255.255.0,24h
+EOF'
+
+# Configure the access point software
+sudo bash -c 'cat <<EOF > /etc/hostapd/hostapd.conf
+interface=uap0
+driver=nl80211
+ssid=FUsensors
+hw_mode=g
+channel=6
+wmm_enabled=0
+macaddr_acl=0
+auth_algs=1
+ignore_broadcast_ssid=0
+wpa=2
+wpa_passphrase=12345678
+wpa_key_mgmt=WPA-PSK
+wpa_pairwise=TKIP
+rsn_pairwise=CCMP
+EOF'
+
+# setup wireless access
+sudo mv /etc/wpa_supplicant/wpa_supplicant.conf /etc/wpa_supplicant/wpa_supplicant.conf.bak
+sudo bash -c 'cat <<EOF > /etc/wpa_supplicant/wpa_supplicant-wlan0.conf
+ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
+#ap_scan=1
+update_config=1
+network={
+	ssid="LLS_BYOD"
+	key_mgmt=NONE
+}
+
+EOF'
+
+# Enable UFWsudo apt-get install ufw
+sudo apt-get install ufw
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+sudo ufw allow 22
+sudo ufw enable
+
+
+# Forwarding
+sudo sed -i.bak -e 's/^DEFAULT_FORWARD_POLICY=.*$/DEFAULT_FORWARD_POLICY="ACCEPT"/' /etc/default/ufw
+
+
+# /etc/ufw/sysctl.conf
+sudo sed -.ibak -e \@net/ipv4/ip_forward@s@^#@@g' /etc/ufw/sysctl.conf
+
+# NAT RULES
+cat <<EOF > /tmp/nat.rules
+# NAT table rules
+*nat
+:POSTROUTING ACCEPT [0:0]
+
+# Forward traffic through eth0 - Change to match you out-interface
+-A POSTROUTING -s 192.168.4.1/24 -o eth0 -j MASQUERADE
+
+# don't delete the 'COMMIT' line or these nat table rules won't
+# be processed
+COMMIT
+
+EOF
+
+sudo sed -i.bak -e "/# Don't delete these required lines/ {r /tmp/nat.rules" -e 'N}' before.rules
+
+
+# Webcam
+sudo apt-get install motion
