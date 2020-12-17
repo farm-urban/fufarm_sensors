@@ -1,15 +1,25 @@
 # Raspberry Pi Setup
+
 * Copy image to disk: https://www.raspberrypi.org/documentation/installation/installing-images/mac.md
+
 * Mount on OSX and goto /Volumes/boot folder and add:
    * `touch ssh`
    * Edit `config.txt` and append `dtoverlay=dwc2`
    * Edit `cmdline.txt` and after `rootwait` add text `modules-load=dwc2,g_ether`
    * (Possibly) `touch avahi`
 
+Set up Mac according to: https://medium.com/@tzhenghao/how-to-ssh-into-your-raspberry-pi-with-a-mac-and-ethernet-cable-636a197d055
+
+
+
 Plug in OTG USB cable to middle USB port and then login with:
 ```
 ssh pi@raspberrypi.local
 ```
+
+Or can login to the raspberry pi at 192.168.3.2. This ip address is +1 from the ip address of the bridge100 interface, which is at 192.168.3.1 (as shown by ifconfig)
+
+
 
 ### Set editor and make sure it's kept during sudo
 Add to ```~/.profile```
@@ -281,9 +291,30 @@ sudo ufw allow in on wlan0 from 192.168.4.1/24 to any port 53
 
 
 ## OPENVPN
-**NEED TO ADD INSTRUCTIONS HERE OR IN OTHER DOC**
+### On n8 server
+Generate certificate:
 
-sudo systemctl enable openvpn-client@rpizero1
+```
+/home/jmht/fu_sensors/mk_openvpn.py <client_name>
+```
+
+ Creates a file called <client_name>```.ovpn``` This needs to be copied into the ```/etc/openvpn/client``` directory on the raspberry pi.
+
+ Create a file called ```/etc/openvpn/ccd/<client_name>``` containing:
+ ```
+ ifconfig-push 10.8.0.207 255.255.255.0 # CHANGE SECOND IP TO BE THAT GIVEN TO THE CLIENT
+ push "redirect-gateway def1 bypass-dhcp"
+ push "remote-gateway vpn_server_ip"
+ push "dhcp-option DNS 8.8.8.8"
+ push "dhcp-option DNS 8.8.4.4"
+ ```
+
+### On Raspberry Pi
+```
+sudo apt install openvpn
+sudo scp jmht@farmuaa2.miniserver.com:fu_sensors/rpi2.ovpn /etc/openvpn/client/rpi2.conf
+sudo systemctl enable openvpn-client@rpi2
+```
 
 
 
@@ -356,6 +387,14 @@ server {
 sudo apt-get update
 sudo apt-get upgrade
 
+
+
+
+# https://raspberrypi.stackexchange.com/questions/28907/how-could-one-automate-the-raspbian-raspi-config-setup
+# Wi-Fi is currently blocked by rfkill.
+# Use raspi-config to set the country before use.
+sudo raspi-config nonint do_wifi_country GB
+
 #  Install software
 sudo apt install hostapd
 sudo systemctl unmask hostapd
@@ -417,6 +456,7 @@ EOF'
 # setup wireless access
 sudo mv /etc/wpa_supplicant/wpa_supplicant.conf /etc/wpa_supplicant/wpa_supplicant.conf.bak
 sudo bash -c 'cat <<EOF > /etc/wpa_supplicant/wpa_supplicant-wlan0.conf
+country=GB
 ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
 #ap_scan=1
 update_config=1
