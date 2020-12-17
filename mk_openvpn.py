@@ -59,10 +59,10 @@ ca_file = os.path.join(easyrsa_dir, "pki/ca.crt")
 cert_file = os.path.join(easyrsa_dir, "pki/issued/{}.crt".format(client_name))
 key_file = os.path.join(easyrsa_dir, "pki/private/{}.key".format(client_name))
 
-build_cmd = [easyrsa_exe, 'build-cluent-full', client_name, nopass]
+build_cmd = [easyrsa_exe, 'build-client-full', client_name, 'nopass']
 if not os.path.isfile(cert_file):
     print("Generating keys with: easyrsa_exe build-client-full {} nopass".format(client_name))
-    ret = subprocess.run(build_cmd)
+    ret = subprocess.run(build_cmd, cwd=easyrsa_dir)
     ret.check_returncode()
 
 #./pki/reqs/sam_android.req
@@ -75,4 +75,4 @@ key_blob = get_key(key_file)
 d = {'ca_blob': ca_blob, 'cert_blob': cert_blob, 'key_blob': key_blob}
 fname = client_name + '.ovpn'
 with open(fname, 'w') as w:
-    w.writa(OVPN.format(**d))
+    w.write(OVPN.format(**d))
