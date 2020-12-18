@@ -199,13 +199,13 @@ network={
 
 ### Hack for wpa_supplicant
 This is requried because of a bug with the drivers - the different interfaces seem to fight with each other. The fix seems to be to restart the wpa_supplicant deamon.
-# Not sure if the below actually required or could just continue with default wpa_supplicant?
+> Not sure if the below actually required or could just continue with default wpa_supplicant?
 ```
 sudo systemctl disable wpa_supplicant
 sudo systemctl enabl wpa_supplicant@wlan0
 ```
 
-Create file: **/usr/local/bin/restart_wpa_supplicant.sh**
+Create file: ```/usr/local/bin/restart_wpa_supplicant.sh```
 ```
 #!/bin/bash
 # nc quicker but need to specify interace with ip
@@ -316,6 +316,47 @@ sudo scp jmht@farmuaa2.miniserver.com:fu_sensors/rpi2.ovpn /etc/openvpn/client/r
 sudo systemctl enable openvpn-client@rpi2
 ```
 
+## Sensor setup
+sudo apt-get install git
+cd /opt
+sudo git clone https://github.com/linucks/fu_sensors.git
+sudo chown -R pi:pi fu_sensors
+
+
+Edit ```/opt/fu_sensors/InfluxDB/rpi_sensors.py``` to set:
+```STATION_MAC = 'rpi2utc'```
+
+```
+sudo apt-get install  python3-gpiozero python3-pigpio
+# Need to start as a service - does this need to be done on each restart?
+sudo pigpiod
+```
+
+Create a service to run the sensor script. Create file: ```/etc/systemd/system/farm_sensors.service```
+
+```
+[Unit]
+After=openvpn-client@rpi2.service
+
+[Service]
+ExecStart=python3 /opt/fu_sensors/InfluxDB/rpi_sensors.py
+WorkingDirectory=/opt/fu_sensors/InfluxDB
+Restart=always
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=farm_sensors
+User=pi
+Group=pi
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Then enable with:
+```
+sudo systemctl enable farm_sensors.service
+sudo systemctl start farm_sensors.service
+```
 
 
 ## Debugging/Maintainence commands
@@ -384,11 +425,11 @@ server {
 ```
 
 ## Actual sequence of commands
+```
+export CLIENT_NAME="rpi2"
+
 sudo apt-get update
 sudo apt-get upgrade
-
-
-
 
 # https://raspberrypi.stackexchange.com/questions/28907/how-could-one-automate-the-raspbian-raspi-config-setup
 # Wi-Fi is currently blocked by rfkill.
@@ -499,6 +540,48 @@ EOF
 
 sudo sed -i.bak -e "/# Don't delete these required lines/ {r /tmp/nat.rules" -e 'N}' before.rules
 
+# OpenVpn
+sudo apt install openvpn
+sudo scp jmht@farmuaa2.miniserver.com:fu_sensors/${CLIENT_NAME}.ovpn /etc/openvpn/client/${CLIENT_NAME}.conf
+sudo systemctl enable openvpn-client@${CLIENT_NAME}
+
 
 # Webcam
 sudo apt-get install motion
+
+
+## Sensor setup
+sudo apt-get install git
+cd /opt
+sudo git clone https://github.com/linucks/fu_sensors.git
+sudo chown -R pi:pi fu_sensors
+# Edit /opt/fu_sensors/InfluxDB/rpi_sensors.py to set: STATION_MAC = 'rpi2utc'
+
+sudo apt-get install  python3-gpiozero python3-pigpio
+# Need to start as a service - does this need to be done on each restart?
+sudo pigpiod
+
+
+sudo bash -c "cat <<EOF >/etc/systemd/system/farm_sensors.service
+[Unit]
+After=openvpn-client@${CLIENT_NAME}.service
+
+[Service]
+ExecStart=python3 /opt/fu_sensors/InfluxDB/rpi_sensors.py
+WorkingDirectory=/opt/fu_sensors/InfluxDB
+Restart=always
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=farm_sensors
+User=pi
+Group=pi
+
+[Install]
+WantedBy=multi-user.target
+EOF
+"
+
+sudo systemctl enable farm_sensors.service
+sudo systemctl start farm_sensors.service
+
+```
