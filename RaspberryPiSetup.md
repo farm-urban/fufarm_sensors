@@ -359,6 +359,83 @@ sudo systemctl start farm_sensors.service
 ```
 
 
+## Setting up webcams
+Install motion (https://motion-project.github.io/motion_config.html):
+``
+sudo apt-get install motion
+
+```
+In file ```/etc/motion/motion.conf``` Uncomment
+```; camera_dir /etc/motion/conf.d
+```
+
+sudo mkdir /etc/motion/conf.d
+
+Create file ```/etc/motion/conf.d/camera1.conf```
+```
+camera_id = 1
+videodevice /dev/v4l/by-id/usb-Generic_USB_Camera_200901010001-video-index0
+v4l2_palette 15
+
+width 320
+height 240
+
+text_left CAMERA 1
+picture_filename CAM1_%v-%Y%m%d%H%M%S-%q
+
+stream_localhost off
+stream_port 8081
+
+framerate 5
+# Maximum framerate for stream streams (default: 1)
+stream_maxrate 3
+```
+
+
+
+Create file ```/etc/motion/conf.d/camera2.conf```
+```
+camera_id = 2
+videodevice /dev/v4l/by-id/usb-AVEO_Technology_Corp._USB2.0_Camera-video-index0
+v4l2_palette 15
+
+width 320
+height 240
+
+text_left CAMERA 2
+picture_filename CAM2_%v-%Y%m%d%H%M%S-%q
+
+stream_localhost off
+stream_port 8082
+
+framerate 5
+# Maximum framerate for stream streams (default: 1)
+stream_maxrate 3
+```
+
+ sudo vi /etc/default/motion - change start_motion_daemon=yes
+Enable as service
+```
+sudo chown -R motion:motion /var/log/motion/
+sudo systemctl enable motion
+sudo systemctl start motion
+```
+
+
+Then need to use nginx to proxy to the 8081 port of the raspberry pi, so on n8 server set up files like:
+
+```
+/etc/nginx/sites-available/rpi_cam1
+
+server {
+    listen 80;
+    server_name cam1.farm.farmurban.co.uk;
+    location / {
+        proxy_pass http://10.8.0.208:8081;
+    }
+}
+```
+
 ## Debugging/Maintainence commands
 ```
 sudo systemctl stop dhcpcd
@@ -374,55 +451,6 @@ sudo ifconfig wlan0 down
 sudo ifconfig wlan0 up
 ```
 
-## Setting up webcams
-Need to install motion
-
-/etc/motion/motion.conf - changed settings
-```
-< daemon on
-#v4l2_palette 17
-v4l2_palette 9
-width 640
-height 480
-framerate 60
-output_pictures off
-ffmpeg_output_movies off
-target_dir /home/pi
-stream_maxrate 10
-stream_localhost off
-stream_localhost on
-```
-camera2.conf
-```
-# /etc/motion/camera2.conf
-camera_id = 2
-videodevice /dev/v4l/by-id/usb-AVEO_Technology_Corp._USB2.0_Camera-video-index0
-v4l2_palette 15
-
-width 320
-height 240
-
-text_left CAMERA 2
-picture_filename CAM2_%v-%Y%m%d%H%M%S-%q
-
-framerate 5
-stream_port 8082
-# Maximum framerate for stream streams (default: 1)
-stream_maxrate 3
-```
-
-Then need to use nginx to proxy to the 8081 port of the raspberry pi:
-
-```
-/etc/nginx/sites-available/influxdb
-server {
-    listen 192.168.4.1:8086;
-    server_name _;
-    location / {
-        proxy_pass http://10.8.0.1:8086;
-    }
-}
-```
 
 ## Actual sequence of commands
 ```
@@ -548,6 +576,58 @@ sudo systemctl enable openvpn-client@${CLIENT_NAME}
 
 # Webcam
 sudo apt-get install motion
+sudo mkdir /etc/motion/conf.d
+
+# Camera 1 config
+sudo bash -c 'cat <<EOF > /etc/motion/conf.d/camera1.conf
+camera_id = 1
+videodevice /dev/v4l/by-id/usb-Generic_USB_Camera_200901010001-video-index0
+v4l2_palette 15
+
+width 320
+height 240
+
+text_left CAMERA 1
+picture_filename CAM1_%v-%Y%m%d%H%M%S-%q
+
+stream_localhost off
+stream_port 8081
+
+framerate 5
+# Maximum framerate for stream streams (default: 1)
+stream_maxrate 3
+EOF'
+
+# Camera 2 config
+sudo bash -c 'cat <<EOF > /etc/motion/conf.d/camera2.conf
+camera_id = 2
+videodevice /dev/v4l/by-id/usb-AVEO_Technology_Corp._USB2.0_Camera-video-index0
+v4l2_palette 15
+
+width 320
+height 240
+
+text_left CAMERA 2
+picture_filename CAM2_%v-%Y%m%d%H%M%S-%q
+
+stream_localhost off
+stream_port 8082
+
+framerate 5
+# Maximum framerate for stream streams (default: 1)
+stream_maxrate 3
+EOF'
+
+
+# /etc/motion/motion.conf
+sudo sed -i.bak -e 's/^; camera_dir/camera_dir/' /etc/motion/motion.conf
+# /etc/default/motion
+sudo sed -i.bak -e 's/start_motion_daemon=no/start_motion_daemon=yes/' /etc/default/motion
+
+# Enable as service - think the first is a bug
+sudo chown -R motion:motion /var/log/motion/
+sudo systemctl enable motion
+sudo systemctl start motion
 
 
 ## Sensor setup
