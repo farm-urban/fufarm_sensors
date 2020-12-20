@@ -11,7 +11,6 @@
 Set up Mac according to: https://medium.com/@tzhenghao/how-to-ssh-into-your-raspberry-pi-with-a-mac-and-ethernet-cable-636a197d055
 
 
-
 Plug in OTG USB cable to middle USB port and then login with:
 ```
 ssh pi@raspberrypi.local
