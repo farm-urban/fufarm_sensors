@@ -13,6 +13,7 @@ docker run -d \
 -e GF_AUTH_ANONYMOUS_ENABLED=true \
 -e GF_AUTH_ANONYMOUS_ORG_NAME=AnonymousOrg \
 -e GF_SERVER_DOMAIN=grafana.farmurban.co.uk \
+-e GF_INSTALL_PLUGINS=grafana-clock-panel \
 grafana/grafana
 
 
