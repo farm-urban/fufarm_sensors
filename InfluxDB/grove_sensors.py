@@ -97,8 +97,11 @@ def take_readings():
 
 pin = 5
 adc_channel = 0
+# Plugged into D5 socket
 sonar = grove_ultrasonic_ranger.GroveUltrasonicRanger(pin)
+# Plugged into A0 socket
 light = grove_light_sensor_v1_2.GroveLightSensor(adc_channel)
+# Plugged into I2C socket
 bme680 = grove_temperature_humidity_bme680.GroveBME680()
 
 while True:
