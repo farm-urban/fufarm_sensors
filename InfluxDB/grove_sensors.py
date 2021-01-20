@@ -1,9 +1,17 @@
 #!/usr/bin/env python3
 """
 https://learn.adafruit.com/adafruits-raspberry-pi-lesson-4-gpio-setup/configuring-i2c
-git clone https://github.com/Seeed-Studio/grove.py
+cd /opt
+sudo git clone https://github.com/Seeed-Studio/grove.py
 export PYTHONPATH=/opt/grove.py
 
+# BME680
+sudo pip3 install bme680
+Need to edit:
+sudo vi /usr/local/lib/python3.7/dist-packages/bme680/__init__.py
+to import smbus2 as smbus
+
+# Systemd
 sudo bash -c "cat <<EOF >/etc/systemd/system/bruntwood_sensors.service
 [Unit]
 After=openvpn-client@rpizero1.service
@@ -33,6 +41,8 @@ import requests
 import time
 
 from grove import grove_ultrasonic_ranger
+from grove import grove_light_sensor_v1_2
+from grove import grove_temperature_humidity_bme680
 
 INFLUX_URL = 'http://10.8.0.1:8086/write?db=bruntwood'
 STATION_MAC = 'bruntwood'
@@ -70,6 +80,9 @@ def readings_to_influxdb_line(readings, station_id, include_timestamp=False):
 
 pin = 5
 sonar = grove_ultrasonic_ranger.GroveUltrasonicRanger(pin)
+adc_channel = 0
+light = grove_light_sensor_v1_2.GroveLightSensor(adc_channel)
+bme680 = grove_temperature_humidity_bme680.GroveBME680()
 
 readings = {}
 while True:
@@ -80,5 +93,14 @@ while True:
         pass
     time.sleep(2)  # Need to add in pause or the distance sensor or else it measures 0.0
     readings['distance'] = sonar.get_distance()
+    readings['light'] = light.light
+    d = bme680.read()
+    readings['temperature'] = d.temperature
+    readings['humidity'] = d.humidity
+    readings['pressure'] = d.pressure
+    if d.heat_stable:
+        readings['air_quality'] = d.gas_resistance
+    else:
+        readings['air_quality'] = 0
     iline = readings_to_influxdb_line(readings, STATION_MAC)
     success = send_data(iline)
