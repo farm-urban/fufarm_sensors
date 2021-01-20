@@ -50,6 +50,18 @@ SAMPLE_WINDOW = 60 * 5
 MOCK = False
 
 
+def readings_to_influxdb_line(readings, station_id, include_timestamp=False):
+    data = ""
+    for k, v in readings.items():
+        data += 'fu_sensor,stationid={},sensor={} measurement={}' \
+               .format(station_id, k, v)
+        if include_timestamp is True:
+            timestamp = utime.mktime(rtc.now())
+            data += ' {}000000000'.format(timestamp)
+        data += "\n"
+    return data
+
+
 def send_data(iline):
     print('sending data\n{}'.format(iline))
     if MOCK:
@@ -67,31 +79,9 @@ def send_data(iline):
     return success
 
 
-def readings_to_influxdb_line(readings, station_id, include_timestamp=False):
-    data = ""
-    for k, v in readings.items():
-        data += 'fu_sensor,stationid={},sensor={} measurement={}' \
-               .format(station_id, k, v)
-        if include_timestamp is True:
-            timestamp = utime.mktime(rtc.now())
-            data += ' {}000000000'.format(timestamp)
-        data += "\n"
-    return data
-
-pin = 5
-sonar = grove_ultrasonic_ranger.GroveUltrasonicRanger(pin)
-adc_channel = 0
-light = grove_light_sensor_v1_2.GroveLightSensor(adc_channel)
-bme680 = grove_temperature_humidity_bme680.GroveBME680()
-
-readings = {}
-while True:
-    sample_start = time.time()
-    sample_end = sample_start + SAMPLE_WINDOW
-    rate_cnt = 0
-    while time.time() < sample_end:
-        pass
-    time.sleep(2)  # Need to add in pause or the distance sensor or else it measures 0.0
+def take_readings():
+    global sonar, light, bme680
+    readings = {}
     readings['distance'] = sonar.get_distance()
     readings['light'] = light.light
     d = bme680.read()
@@ -102,5 +92,22 @@ while True:
         readings['air_quality'] = d.gas_resistance
     else:
         readings['air_quality'] = 0
+    return readings
+
+
+pin = 5
+adc_channel = 0
+sonar = grove_ultrasonic_ranger.GroveUltrasonicRanger(pin)
+light = grove_light_sensor_v1_2.GroveLightSensor(adc_channel)
+bme680 = grove_temperature_humidity_bme680.GroveBME680()
+
+while True:
+    sample_start = time.time()
+    sample_end = sample_start + SAMPLE_WINDOW
+    rate_cnt = 0
+    while time.time() < sample_end:
+        pass
+    time.sleep(2)  # Need to add in pause or the distance sensor or else it measures 0.0
+    readings = take_readings()
     iline = readings_to_influxdb_line(readings, STATION_MAC)
     success = send_data(iline)
