@@ -89,16 +89,12 @@ def send_data(iline):
 
 
 def take_readings():
-    global sonar, light, sensor_bme680, bme680_baseline
+    global sonar, light, sensor_bme680, gas_baseline
     readings = {}
     readings['distance'] = sonar.get_distance()
     readings['light'] = light.light
     d = bme680_readings(sensor_bme680)
-    air_quality = air_quality_score(d.gas_resistance,
-                                    d.humidity,
-                                    bme680_baseline.gas_baseline,
-                                    bme680_baseline.humidity_baseline,
-                                    bme680_baseline.humidity_weighting)
+    air_quality = air_quality_score(d.gas_resistance, d.humidity, gas_baseline)
     readings['temperature'] = d.temperature
     readings['humidity'] = d.humidity
     readings['pressure'] = d.pressure
@@ -133,7 +129,7 @@ def setup_bme680():
     return sensor
 
 
-def init_bme680(sensor_bme680):
+def bme680_gas_baseline(sensor_bme680):
     logger.info("Initialising BME680 and getting burn-in data")
     start_time = time.time()
     curr_time = time.time()
@@ -151,42 +147,37 @@ def init_bme680(sensor_bme680):
             burn_in_data.append(gas)
             time.sleep(1)
     num_points = min(len(burn_in_data), 50)
-    print("GOT num_points ",num_points)
     gas_baseline = sum(burn_in_data[-num_points:]) / float(num_points)
-
-    # Set the humidity baseline to 40%, an optimal indoor humidity.
-    hum_baseline = 40.0
-
-    # This sets the balance between humidity and gas reading in the
-    # calculation of air_quality_score (25:75, humidity:gas)
-    hum_weighting = 0.25
-
-    ret = namedtuple('ret', ['gas_baseline', 'humidity_baseline', 'humidity_weighting'])
-    return ret(gas_baseline, hum_baseline, hum_weighting)
+    logger.info("Got gas_baseline %s",gas_baseline)
+    return gas_baseline
 
 
-def air_quality_score(gas_resistance, humidity, gas_baseline, humidity_baseline, humidity_weighting):
+def air_quality_score(gas_resistance, humidity, gas_baseline):
+    AIR_QUALITY_RANGE = 500
+    humidity_baseline = AIR_QUALITY_RANGE * 0.4 # Set the humidity baseline to 40%, an optimal indoor humidity.
+    humidity_weighting = 0.25 # Set the balance between humidity and gas reading in calculation of air_quality_score (25:75, humidity:gas)
+
     gas_offset = gas_baseline - gas_resistance
-    hum_offset = humidity - humidity_baseline
+    humidity_offset = humidity - humidity_baseline
 
     # Calculate hum_score as the distance from the hum_baseline.
-    if hum_offset > 0:
-        humidity_score = (100 - humidity_baseline - hum_offset)
-        humidity_score /= (100 - humidity_baseline)
-        humidity_score *= (humidity_weighting * 100)
+    if humidity_offset > 0:
+        humidity_score = (AIR_QUALITY_RANGE - humidity_baseline - humidity_offset)
+        humidity_score /= (AIR_QUALITY_RANGE - humidity_baseline)
+        humidity_score *= (humidity_weighting * AIR_QUALITY_RANGE)
     else:
-        humidity_score = (humidity_baseline + hum_offset)
+        humidity_score = (humidity_baseline + humidity_offset)
         humidity_score /= humidity_baseline
-        humidity_score *= (humidity_weighting * 100)
+        humidity_score *= (humidity_weighting * AIR_QUALITY_RANGE)
 
     # Calculate gas_score as the distance from the gas_baseline.
     if gas_offset > 0:
         gas_score = (gas_resistance / gas_baseline)
-        gas_score *= (100 - (humidity_weighting * 100))
+        gas_score *= (AIR_QUALITY_RANGE - (humidity_weighting * AIR_QUALITY_RANGE))
     else:
-        gas_score = 100 - (humidity_weighting * 100)
+        gas_score = AIR_QUALITY_RANGE - (humidity_weighting * AIR_QUALITY_RANGE)
 
-    return humidity_score + gas_score
+    return int(humidity_score + gas_score)
 
 
 def bme680_readings(sensor_bme680):
@@ -216,7 +207,7 @@ light = grove_light_sensor_v1_2.GroveLightSensor(adc_channel)
 # sensor_bme680 = grove_temperature_humidity_bme680.GroveBME680()
 sensor_bme680 = setup_bme680()
 # This takes 5 minutes
-bme680_baseline = init_bme680(sensor_bme680)
+gas_baseline = bme680_gas_baseline(sensor_bme680)
 
 while True:
     sample_start = time.time()
