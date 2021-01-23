@@ -39,7 +39,9 @@ sudo systemctl start bruntwood_sensors.service
 
 """
 from collections import namedtuple
+import logging
 import requests
+import sys
 import time
 
 from grove import grove_ultrasonic_ranger
@@ -53,6 +55,7 @@ STATION_MAC = 'bruntwood'
 SAMPLE_WINDOW = 60 * 5
 MOCK = False
 
+logger = logging.basicConfig(stream=sys.stdout)
 
 def readings_to_influxdb_line(readings, station_id, include_timestamp=False):
     data = ""
@@ -67,7 +70,7 @@ def readings_to_influxdb_line(readings, station_id, include_timestamp=False):
 
 
 def send_data(iline):
-    print('sending data\n{}'.format(iline))
+    logger.info('sending data{}'.format(iline))
     if MOCK:
         return
     success = False
@@ -77,7 +80,7 @@ def send_data(iline):
             requests.post(INFLUX_URL, data=iline)
             success = True
         except Exception as e:
-            print('network error: {}'.format(e))
+            logger.warn('network error: {}'.format(e))
             number_of_retries -= 1
             pass
     return success
@@ -188,7 +191,7 @@ def bme680_readings(sensor_bme680):
         humidity = sensor_bme680.data.humidity
         pressure = sensor_bme680.data.pressure
     else:
-        print("Error taking bme680_readings")
+        logger.warn("Error taking bme680_readings")
         error = True
         gas_resistance = -1
         temperature = 0
