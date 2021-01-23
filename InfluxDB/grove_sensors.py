@@ -55,7 +55,9 @@ STATION_MAC = 'bruntwood'
 SAMPLE_WINDOW = 60 * 5
 MOCK = False
 
-logger = logging.basicConfig(stream=sys.stdout)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s [bruntwood_sensors]: %(message)s')
+logger = logging.getLogger()
+
 
 def readings_to_influxdb_line(readings, station_id, include_timestamp=False):
     data = ""
@@ -70,8 +72,8 @@ def readings_to_influxdb_line(readings, station_id, include_timestamp=False):
 
 
 def send_data(iline):
-    logger.info('sending data{}'.format(iline))
     if MOCK:
+        logger.info('sending data{}'.format(iline))
         return
     success = False
     number_of_retries = 3
@@ -100,7 +102,7 @@ def take_readings():
     readings['temperature'] = d.temperature
     readings['humidity'] = d.humidity
     readings['pressure'] = d.pressure
-    readings['air_quality'] = d.gas_resistance
+    readings['air_quality'] = air_quality
 
     # d = bme680.read()
     # readings['temperature'] = d.temperature
@@ -132,9 +134,12 @@ def setup_bme680():
 
 
 def init_bme680(sensor_bme680):
+    logger.info("Initialising BME680 and getting burn-in data")
     start_time = time.time()
     curr_time = time.time()
     burn_in_time = 300  # 5 minutes
+    if MOCK:
+        burn_in_time = 30
     burn_in_data = []
     # Collect gas resistance burn-in values, then use the average
     # of the last 50 values to set the upper limit for calculating
@@ -146,6 +151,7 @@ def init_bme680(sensor_bme680):
             burn_in_data.append(gas)
             time.sleep(1)
     num_points = min(len(burn_in_data), 50)
+    print("GOT num_points ",num_points)
     gas_baseline = sum(burn_in_data[-num_points:]) / float(num_points)
 
     # Set the humidity baseline to 40%, an optimal indoor humidity.
@@ -198,7 +204,7 @@ def bme680_readings(sensor_bme680):
         humidity = -1
         pressure = -1
     r = namedtuple('readings', ['gas_resistance', 'temperature', 'humidity', 'pressure', 'error'])
-    return r([gas_resistance, temperature, humidity, pressure, error])
+    return r(gas_resistance, temperature, humidity, pressure, error)
 
 pin = 5
 adc_channel = 0
