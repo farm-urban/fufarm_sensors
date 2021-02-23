@@ -4,3 +4,7 @@ Laurence's [spreadsheet](https://docs.google.com/spreadsheets/d/1RAleg7ZHxuUZmmo
 
 ### Gravity: Arduino Shield for Raspberry Pi B+/2B/3B/3B+/4B
 * https://www.dfrobot.com/product-1211.html
+
+
+### Gravity: DHT22 Temperature & Humidity Sensor
+* https://www.dfrobot.com/product-1102.html
