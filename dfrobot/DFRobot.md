@@ -4,10 +4,17 @@ Laurence's [spreadsheet](https://docs.google.com/spreadsheets/d/1RAleg7ZHxuUZmmo
 ### General installations
 ```
 sudo apt-get install git
-sudo apt-get install python3-pip
-git clone https://github.com/amperka/ino.git
-cd ino
-sudo python3 setup.py install
+sudo apt-get install python-pip
+mkdir /opt/arduino-cli; cd /opt/arduino-cli/
+curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
+export PATH=/opt/arduino-cli/bin:$PATH
+cd /opt/fu_sensors/dfrobot/beep
+arduino-cli config init
+arduino-cli core update-index
+# arduino-cli board list
+arduino-cli core install  arduino:avr
+arduino-cli compile --fqbn arduino:avr:leonardo MyFirstSketch
+arduino-cli upload -p /dev/ttyACM0 --fqbn arduino:avr:leonardo  MyFirstSketch
 ```
 
 The scripts pyserial-miniterm and pyserial-ports are installed in '/home/pi/.local/bin' which is not on PATH.
