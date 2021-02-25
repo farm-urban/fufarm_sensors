@@ -13,8 +13,15 @@ arduino-cli config init
 arduino-cli core update-index
 # arduino-cli board list
 arduino-cli core install  arduino:avr
-arduino-cli compile --fqbn arduino:avr:leonardo MyFirstSketch
-arduino-cli upload -p /dev/ttyACM0 --fqbn arduino:avr:leonardo  MyFirstSketch
+arduino-cli compile --fqbn arduino:avr:leonardo beeo
+arduino-cli upload -p /dev/ttyACM0 --fqbn arduino:avr:leonardo  beep
+
+# For SEN0137 Temperature and Humidity sensor
+arduino-cli lib install "DHT sensor library for ESPx"
+
+# For DFR0198: Waterproof DS18B20 Sensor Kit
+arduino-cli lib install OneWire
+
 ```
 
 The scripts pyserial-miniterm and pyserial-ports are installed in '/home/pi/.local/bin' which is not on PATH.
