@@ -35,4 +35,5 @@ Consider adding this directory to PATH or, if you prefer to suppress this warnin
 ### Gravity: DHT22 Temperature & Humidity Sensor
 * https://www.dfrobot.com/product-1102.html
 
-
+### Gravity: Analog Electrical Conductivity Sensor /Meter V2 (K=1)
+* https://www.dfrobot.com/product-1123.html
