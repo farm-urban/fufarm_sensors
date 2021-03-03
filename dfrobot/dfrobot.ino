@@ -1,5 +1,8 @@
 #include "DHTesp.h"
 #include <OneWire.h>
+#include <ArduinoJson.h>
+
+#define JSON_DOC_SIZE 200;
 
 int dhtPin = 2;
 int co2Pin = A0;
@@ -9,6 +12,9 @@ int DS18S20_Pin = 3;
 DHTesp dht;
 //Temperature chip i/o
 OneWire ds(DS18S20_Pin);  // on digital pin 2
+
+//StaticJsonDocument<JSON_DOC_SIZE> doc;
+StaticJsonDocument<200> doc;
 
 int getCO2(int analogPin){
     // Calculate CO2 concentration in ppm
@@ -90,14 +96,23 @@ void loop() {
     delay(1000);
 
     TempAndHumidity m = dht.getTempAndHumidity();
-    out += "T: " + String(m.temperature);
-    out += " | H: " + String(m.humidity);
-
-    out += " | CO2: " + String(getCO2(co2Pin));
-
-    out += " | T_wet: " + String(getTempWet());
-
+    float t = m.temperature;
+    float h = m.humidity;
+    int co2 = getCO2(co2Pin);
+    float twet = getTempWet();
+    out += "T: " + String(t);
+    out += " | H: " + String(h);
+    out += " | CO2: " + String(co2);
+    out += " | T_wet: " + String(twet);
     Serial.println(out);
+
+    //json
+    doc["temperature"] = t;
+    doc["humidity"] = h;
+    doc["temperature_wet"] = twet;
+    doc["co2"] = co2;
+    serializeJson(doc, Serial);
+
     digitalWrite(LED_BUILTIN, LOW);
     delay(1000);
 }
