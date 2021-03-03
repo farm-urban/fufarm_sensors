@@ -1,20 +1,33 @@
+#include <ArduinoJson.h>
+// Sensors
 #include "DHTesp.h"
 #include <OneWire.h>
-#include <ArduinoJson.h>
+#include "DFRobot_EC.h"
 
-#define JSON_DOC_SIZE 200;
 
-int dhtPin = 2;
+// Analog Inputs
 int co2Pin = A0;
+int ecPin = A1;
+// Digital Inputs
+int dhtPin = 2;
 int DS18S20_Pin = 3;
 
-//Temperature and Humidity
+// Temperature and Humidity
 DHTesp dht;
-//Temperature chip i/o
+// Temperature chip i/o
 OneWire ds(DS18S20_Pin);  // on digital pin 2
+// EC probe
+DFRobot_EC ec;
 
-//StaticJsonDocument<JSON_DOC_SIZE> doc;
-StaticJsonDocument<200> doc;
+#define JSON_DOC_SIZE 200;
+const int jsize=JSON_DOC_SIZE;
+StaticJsonDocument<jsize> doc;
+
+
+float getEC(int ecPin, float temperature){
+   float voltage = analogRead(ecPin)/1024.0*5000;   // read the voltage
+   return ec.readEC(voltage,temperature);  // convert voltage to EC with temperature compensation
+}
 
 int getCO2(int analogPin){
     // Calculate CO2 concentration in ppm
@@ -87,6 +100,7 @@ void setup() {
     dht.setup(dhtPin, DHTesp::DHT22);
     // Set the default voltage of the reference voltage
     analogReference(DEFAULT);
+    ec.begin();
 }
 
 
@@ -100,17 +114,14 @@ void loop() {
     float h = m.humidity;
     int co2 = getCO2(co2Pin);
     float twet = getTempWet();
-    out += "T: " + String(t);
-    out += " | H: " + String(h);
-    out += " | CO2: " + String(co2);
-    out += " | T_wet: " + String(twet);
-    Serial.println(out);
+    float ec = getEC(ecPin, twet);
 
     //json
     doc["temperature"] = t;
     doc["humidity"] = h;
     doc["temperature_wet"] = twet;
     doc["co2"] = co2;
+    doc["ec"] = ec;
     serializeJson(doc, Serial);
 
     digitalWrite(LED_BUILTIN, LOW);

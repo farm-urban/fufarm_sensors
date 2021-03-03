@@ -6,3 +6,8 @@ arduino-cli lib install "DHT sensor library for ESPx"
 arduino-cli lib install OneWire
 # Json
 arduino-cli lib install ArduinoJson
+
+# DEFOBOT EC
+wget https://github.com/DFRobot/DFRobot_EC/archive/master.zip
+unzip master.zip
+mv DFRobot_EC-master/ ~/Arduino/libraries/
