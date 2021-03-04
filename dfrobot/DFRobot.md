@@ -37,3 +37,6 @@ Consider adding this directory to PATH or, if you prefer to suppress this warnin
 
 ### Gravity: Analog Electrical Conductivity Sensor /Meter V2 (K=1)
 * https://www.dfrobot.com/product-1123.html
+
+### Gravity: Analog pH Sensor/Meter Kit V2
+* https://www.dfrobot.com/product-1782.html
