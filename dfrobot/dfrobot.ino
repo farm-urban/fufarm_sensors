@@ -5,6 +5,8 @@
 #include "DFRobot_EC.h"
 #include "DFRobot_PH.h"
 
+// Time in milliseconds
+#define SAMPLE_WINDOW 5000
 
 // Analog Inputs
 int co2Pin = A0;
@@ -118,10 +120,7 @@ void setup() {
 
 
 void loop() {
-    String out;
-    digitalWrite(LED_BUILTIN, HIGH);
-    delay(1000);
-
+    //digitalWrite(LED_BUILTIN, HIGH);
     TempAndHumidity th = dht.getTempAndHumidity();
     float t = th.temperature;
     float h = th.humidity;
@@ -139,8 +138,7 @@ void loop() {
     doc["ph"] = ph;
     serializeJson(doc, Serial);
 
-    digitalWrite(LED_BUILTIN, LOW);
-    delay(1000);
+    delay(SAMPLE_WINDOW);
 }
 
 
