@@ -22,6 +22,8 @@ arduino-cli lib install "DHT sensor library for ESPx"
 # For DFR0198: Waterproof DS18B20 Sensor Kit
 arduino-cli lib install OneWire
 
+sudo python3 -m pip install influxdb-client
+
 ```
 
 The scripts pyserial-miniterm and pyserial-ports are installed in '/home/pi/.local/bin' which is not on PATH.
