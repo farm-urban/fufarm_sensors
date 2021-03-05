@@ -1,7 +1,7 @@
 #!/bin/bash
 export PATH=/opt/arduino-cli/bin:$PATH
 
-usage="Usage $0 ph|ec";
+usage="Usage $0 ph|ec|clear";
 atty=/dev/ttyACM0
 
 if [ $# -ne 1 ]; then
@@ -15,6 +15,9 @@ then
 elif [ $1 = "ec" ]
 then
     sketch=ec_calibration
+elif [ $1 = "clear" ]
+then
+    sketch=clear_eprom
 else
     echo $usage
     exit 1;
