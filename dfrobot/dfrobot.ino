@@ -3,31 +3,43 @@
 #include "DHTesp.h"
 #include <OneWire.h>
 #include "DFRobot_EC.h"
+#include "DFRobot_PH.h"
 
 
 // Analog Inputs
 int co2Pin = A0;
 int ecPin = A1;
+int phPin = A2;
 // Digital Inputs
 int dhtPin = 2;
 int DS18S20_Pin = 3;
 
+
 // Temperature and Humidity
 DHTesp dht;
-// Temperature chip i/o
-OneWire ds(DS18S20_Pin);  // on digital pin 2
+// Wet temperature chip i/o
+OneWire ds(DS18S20_Pin);
 // EC probe
-DFRobot_EC ec;
+DFRobot_EC ec_probe;
+// pH probe
+DFRobot_PH ph_probe;
 
 #define JSON_DOC_SIZE 200;
 const int jsize=JSON_DOC_SIZE;
 StaticJsonDocument<jsize> doc;
 
 
-float getEC(int ecPin, float temperature){
-   float voltage = analogRead(ecPin)/1024.0*5000;   // read the voltage
-   return ec.readEC(voltage,temperature);  // convert voltage to EC with temperature compensation
+float getPH(int phPin, float temperature){
+   float voltage = analogRead(phPin)/1024.0*5000;
+   return ph_probe.readPH(voltage,temperature);
 }
+
+
+float getEC(int ecPin, float temperature){
+   float voltage = analogRead(ecPin)/1024.0*5000;
+   return ec_probe.readEC(voltage,temperature);
+}
+
 
 int getCO2(int analogPin){
     // Calculate CO2 concentration in ppm
@@ -100,7 +112,8 @@ void setup() {
     dht.setup(dhtPin, DHTesp::DHT22);
     // Set the default voltage of the reference voltage
     analogReference(DEFAULT);
-    ec.begin();
+    ec_probe.begin();
+    ph_probe.begin();
 }
 
 
@@ -109,19 +122,21 @@ void loop() {
     digitalWrite(LED_BUILTIN, HIGH);
     delay(1000);
 
-    TempAndHumidity m = dht.getTempAndHumidity();
-    float t = m.temperature;
-    float h = m.humidity;
+    TempAndHumidity th = dht.getTempAndHumidity();
+    float t = th.temperature;
+    float h = th.humidity;
     int co2 = getCO2(co2Pin);
     float twet = getTempWet();
     float ec = getEC(ecPin, twet);
+    float ph = getPH(phPin, twet);
 
-    //json
+    // json
     doc["temperature"] = t;
     doc["humidity"] = h;
     doc["temperature_wet"] = twet;
     doc["co2"] = co2;
     doc["ec"] = ec;
+    doc["ph"] = ph;
     serializeJson(doc, Serial);
 
     digitalWrite(LED_BUILTIN, LOW);
