@@ -29,7 +29,7 @@ sudo python3 -m pip install influxdb-client
 The scripts pyserial-miniterm and pyserial-ports are installed in '/home/pi/.local/bin' which is not on PATH.
 Consider adding this directory to PATH or, if you prefer to suppress this warning, use --no-warn-script-location.
 
-
+## Sensors
 ### Gravity: Arduino Shield for Raspberry Pi B+/2B/3B/3B+/4B
 * https://www.dfrobot.com/product-1211.html
 
@@ -42,3 +42,8 @@ Consider adding this directory to PATH or, if you prefer to suppress this warnin
 
 ### Gravity: Analog pH Sensor/Meter Kit V2
 * https://www.dfrobot.com/product-1782.html
+
+## Notes
+Couldn't connect to the Arduino from the Raspberry Pi (via terminal from OSX) to do the pH and EC calibration due to what appear to be problems with how the terminal input is handled. Therefore copies of the relevant repositories were made and the code updated to work with an updated protocol:
+* https://github.com/linucks/DFRobot_EC
+* https://github.com/linucks/DFRobot_PH
