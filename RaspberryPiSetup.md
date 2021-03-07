@@ -506,7 +506,7 @@ EOF'
 # Configure the access point software
 sudo bash -c 'cat <<EOF > /etc/hostapd/hostapd.conf
 interface=uap0
-driver=nl80211
+#driver=nl80211
 ssid=FUsensors
 hw_mode=g
 channel=6
