@@ -567,7 +567,7 @@ COMMIT
 
 EOF
 
-sudo sed -i.bak -e "/# Don't delete these required lines/ {r /tmp/nat.rules" -e 'N}' before.rules
+sudo sed -i.bak -e "/# Don't delete these required lines/ {r /tmp/nat.rules" -e 'N}' /etc/ufw/before.rules
 
 # OpenVpn
 sudo apt install openvpn
