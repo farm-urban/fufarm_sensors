@@ -235,8 +235,10 @@ sudo ufw enable
 ```
 
 ### Use UFW to manage routing and IP masquerading
-From: https://gist.github.com/kimus/9315140
-And: https://mike632t.wordpress.com/2019/02/02/configuring-a-linux-wireless-access-point/
+From:
+* https://gist.github.com/kimus/9315140
+* https://mike632t.wordpress.com/2019/02/02/configuring-a-linux-wireless-access-point/
+* https://www.raspberrypi.org/documentation/configuration/wireless/access-point-routed.md
 
 
 In the file **/etc/default/ufw** change the parameter DEFAULT_FORWARD_POLICY
