@@ -53,6 +53,10 @@ key-direction 1
 easyrsa_dir = "/home/jmht/EasyRSA-v3.0.6"
 easyrsa_exe = os.path.join(easyrsa_dir, 'easyrsa')
 ca_passwd = "FarmUrban!sAwesome"
+
+if len(sys.argv) != 2:
+    print("Usage: {} <client_name>".format(sys.argv[0]))
+    sys.exit(1)
 client_name = sys.argv[1]
 
 ca_file = os.path.join(easyrsa_dir, "pki/ca.crt")
