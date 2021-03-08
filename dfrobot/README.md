@@ -57,3 +57,11 @@ For long-term use of pH probe, need to use industrial version of the pH probe:
 
 For EC probe also need an industrial version. [Michael Ratcliffe](http://www.michaelratcliffe.com/) has a simple suggestion
 * https://arduino.stackexchange.com/questions/49895/how-to-measure-electrical-conductivity-using-arduino
+
+The specifications of the current probe are:
+* Supply Voltage: 3.0~5.0V
+* Output Voltage: 0~3.4V
+* Probe Connector: BNC
+* Signal Connector: PH2.0-3Pin
+* Measurement Accuracy: ±5% F.S.
+* K = 1.0
