@@ -47,3 +47,12 @@ Consider adding this directory to PATH or, if you prefer to suppress this warnin
 Couldn't connect to the Arduino from the Raspberry Pi (via terminal from OSX) to do the pH and EC calibration due to what appear to be problems with how the terminal input is handled. Therefore copies of the relevant repositories were made and the code updated to work with an updated protocol:
 * https://github.com/linucks/DFRobot_EC
 * https://github.com/linucks/DFRobot_PH
+
+Need to isolate the pH and EC probes if using in the same solution. A solution is:
+* https://www.dfrobot.com/product-1621.html
+
+For long-term use of pH probe, need to use industrial version of the pH probe:
+* https://www.dfrobot.com/product-1110.html
+* https://www.dfrobot.com/product-1074.html
+
+
