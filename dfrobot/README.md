@@ -55,4 +55,5 @@ For long-term use of pH probe, need to use industrial version of the pH probe:
 * https://www.dfrobot.com/product-1110.html
 * https://www.dfrobot.com/product-1074.html
 
-
+For EC probe also need an industrial version. [Michael Ratcliffe](http://www.michaelratcliffe.com/) has a simple suggestion
+* https://arduino.stackexchange.com/questions/49895/how-to-measure-electrical-conductivity-using-arduino
