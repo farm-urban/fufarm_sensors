@@ -65,3 +65,12 @@ The specifications of the current probe are:
 * Signal Connector: PH2.0-3Pin
 * Measurement Accuracy: ±5% F.S.
 * K = 1.0
+
+## Sensors to pins
+|Sensor|Pin|
+|---|---|
+|CO2|A0|
+|EC|A1|
+|pH|A2|
+|Temp & Humidity|D2|
+|Wet Temp|D3|
