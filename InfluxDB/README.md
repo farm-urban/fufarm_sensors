@@ -1,6 +1,9 @@
 ## Wipy Code
 Code lives in InfluxDB/pysense
 
+## Raspberry Pi
+* [GPIO Layout](https://www.raspberrypi.org/documentation/usage/gpio/)
+
 ## Random Notes
 PyMakr.json
 /Users/jmht/Library/Application Support/Code/User/pymakr.json
