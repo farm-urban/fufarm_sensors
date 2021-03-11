@@ -11,6 +11,23 @@ sudo apt-get install  python3-gpiozero python3-pigpio
 # Need to start as a service
 sudo pigpiod
 
+# Wiring diagram HC-SR04
+https://thepihut.com/blogs/raspberry-pi-tutorials/hc-sr04-ultrasonic-range-sensor-on-the-raspberry-pi
+
+# YF-S201
+https://www.hobbytronics.co.uk/yf-s201-water-flow-meter
+Requires +5V so need to use voltage divider
+
+Red ---------------- 5V
+
+             +------ GPIO 22
+             |
+             |
+             |
+Yellow --1K--+--2K-- GND
+
+Black -------------- GND
+
 # waterproof JSN-SR04T
 https://www.amazon.co.uk/Youmile-Measuring-Transducer-Ultrasonic-Waterproof/dp/B07YDG53MC/
 
