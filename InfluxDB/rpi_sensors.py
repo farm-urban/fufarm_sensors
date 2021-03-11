@@ -7,7 +7,10 @@ https://cdn.sparkfun.com/assets/learn_tutorials/6/7/6/PiZerov2.pdf
 
 https://gpiozero.readthedocs.io/en/stable/api_input.html#distancesensor-hc-sr04
 https://gpiozero.readthedocs.io/en/stable/api_pins.html#gpiozero.pins.pigpio.PiGPIOFactory
+
+http://abyz.me.uk/rpi/pigpio/python.html
 sudo apt-get install  python3-gpiozero python3-pigpio
+
 # Need to start as a service
 sudo pigpiod
 
