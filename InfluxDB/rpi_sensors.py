@@ -43,10 +43,11 @@ import time
 
 
 INFLUX_URL = 'http://10.8.0.1:8086/write?db=farmdb'
-STATION_MAC = 'rpizero1utc'
+STATION_MAC = 'rpi2utc'
 SAMPLE_WINDOW = 60 * 5
+#SAMPLE_WINDOW = 5
 MOCK = False
-rate_cnt = 0
+USE_FACTORY=False
 
 
 def send_data(iline):
@@ -79,26 +80,36 @@ def readings_to_influxdb_line(readings, station_id, include_timestamp=False):
 
 
 def count_paddle():
-    global rate_cnt
-    rate_cnt += 1
+    global pulse_count
+    pulse_count += 1
     # print("button was pressed")
 
 
 def flow_rate(sample_window):
-    return rate_cnt
+    """From YF-S201 manual:
+    Pluse Characteristic:F=7Q(L/MIN).
+    2L/MIN=16HZ 4L/MIN=32.5HZ 6L/MIN=49.3HZ 8L/MIN=65.5HZ 10L/MIN=82HZ
+
+    sample_window is in seconds, so hz is pulse_count / sample_window
+    """
+    hertz = pulse_count / sample_window
+    return hertz / 7.0
 
 
 btn = DigitalInputDevice(22)
 btn.when_activated = count_paddle
 
-factory = PiGPIOFactory()
+factory = None
+if USE_FACTORY:
+    factory = PiGPIOFactory()
 sensor = DistanceSensor(trigger=17, echo=27, pin_factory=factory, queue_len=20)
 
+pulse_count = 0
 readings = {}
 while True:
     sample_start = time.time()
     sample_end = sample_start + SAMPLE_WINDOW
-    rate_cnt = 0
+    pulse_count = 0
     while time.time() < sample_end:
         pass
     readings['flow_rate'] = flow_rate(SAMPLE_WINDOW)
