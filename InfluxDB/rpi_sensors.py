@@ -47,7 +47,9 @@ STATION_MAC = 'rpi2utc'
 SAMPLE_WINDOW = 60 * 5
 #SAMPLE_WINDOW = 5
 MOCK = False
-USE_FACTORY=False
+USE_PIGPIOD = False
+INFLUX_SCHEMA = { 'measurement': 'fu_sensors',
+                  'tags': {'station_id' : STATION_MAC}}
 
 
 def send_data(iline):
@@ -67,16 +69,16 @@ def send_data(iline):
     return success
 
 
-def readings_to_influxdb_line(readings, station_id, include_timestamp=False):
-    data = ""
-    for k, v in readings.items():
-        data += 'fu_sensor,stationid={},sensor={} measurement={}' \
-               .format(station_id, k, v)
-        if include_timestamp is True:
-            timestamp = utime.mktime(rtc.now())
-            data += ' {}000000000'.format(timestamp)
-        data += "\n"
-    return data
+def readings_to_influxdb_line(schema, readings, include_timestamp=False):
+    measurement = schema['measurement']
+    tags = ",".join(["{}={}".format(k,v) for k,v in schema['tags'].items()])
+    fields = ",".join(["{}={}".format(k,v) for k,v in readings.items()])
+    iline = "{},{} {}".format(measurement, tags, fields)
+    if include_timestamp is True:
+        timestamp = utime.mktime(rtc.now())
+        iline += ' {}000000000'.format(timestamp)
+    iline += "\n"
+    return iline
 
 
 def count_paddle():
@@ -100,7 +102,7 @@ btn = DigitalInputDevice(22)
 btn.when_activated = count_paddle
 
 factory = None
-if USE_FACTORY:
+if USE_PIGPIOD:
     factory = PiGPIOFactory()
 sensor = DistanceSensor(trigger=17, echo=27, pin_factory=factory, queue_len=20)
 
@@ -115,5 +117,5 @@ while True:
     readings['flow_rate'] = flow_rate(SAMPLE_WINDOW)
     time.sleep(2)  # Need to add in pause or the distance sensor or else it measures 0.0
     readings['distance'] = sensor.distance
-    iline = readings_to_influxdb_line(readings, STATION_MAC)
+    iline = readings_to_influxdb_line(INFLUX_SCHEMA, readings)
     success = send_data(iline)
