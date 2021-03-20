@@ -18,7 +18,7 @@ from datetime import datetime
 
 
 def send_data_to_influx(schema, data, include_timestamp=False):
-    iline = readings_to_influxdb_line(schema, readings, include_timestamp=include_timestamp)
+    iline = readings_to_influxdb_line(schema, data, include_timestamp=include_timestamp)
     return send_data(schema, iline)
 
 
@@ -32,7 +32,7 @@ def send_data(schema, iline):
     headers = {"Authorization": "Token {}".format(schema["token"])}
     logger.debug(
         "Sending url: {} params: {} headers: {} data: {}".format(
-            url, params, headers, data
+            url, params, headers, iline
         )
     )
     if MOCK:
@@ -44,10 +44,11 @@ def send_data(schema, iline):
     while retry:
          try:
             response = requests.post(url, headers=headers, params=params, data=iline)
+            logger.debug("Sent data - status_code: {}\ntext: {}".format(response.status_code, response.text))
             success = True
             break
-        except (requests.exceptions.ConnectionError,
-                requests.exceptions.Timeout) as e:
+         except (requests.exceptions.ConnectionError,
+                 requests.exceptions.Timeout) as e:
             logger.error("Network error: {}\nstatus_code: {}\ntext: {}".format(e, response.status_code, response.text))
             tries += 1
             if number_of_retries != 0:
@@ -77,7 +78,7 @@ TOKEN = "HKlpgdVMvW_pyDemAnSkW1ZQHny14G5wFCAMQdrYR-20Nc_QlbVRJmEowXMxVGSus2O73TU
 ORG = "accounts@farmurban.co.uk"
 INFLUX_URL = "https://westeurope-1.azure.cloud2.influxdata.com"
 ARDUINO_TERMINAL = "/dev/ttyACM0"
-INCLUDE_TIMESTAMP = True
+INCLUDE_TIMESTAMP = False
 
 
 influx_schema = {
@@ -91,7 +92,7 @@ influx_schema = {
 
 
 logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s [laurence_experiment]: %(message)s"
+    level=logging.DEBUG, format="%(asctime)s [laurence_experiment]: %(message)s"
 )
 logger = logging.getLogger()
 
@@ -106,5 +107,5 @@ while True:
         except json.decoder.JSONDecodeError as e:
             logger.warning("Error reading data:%s", e)
             continue
-        send_data_to_influx(schema, data, include_timestamp=INCLUDE_TIMESTAMP):
+        send_data_to_influx(influx_schema, data, include_timestamp=INCLUDE_TIMESTAMP)
         time.sleep(POLL_INTERVAL)
