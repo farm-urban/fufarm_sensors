@@ -34,9 +34,47 @@ tags (indexed):
 stationid
 sensor
 
-# Log in to influxdb and setup database and measurement
+## Log in to influxdb and setup database and measurement
 create database farmdb
 use farmdb
+
+## Querying Influxdb data
+```
+influx -precision rfc3339
+SHOW DATABASES
+USE FARMDB
+
+SHOW MEASUREMENTS
+name: measurements
+name
+----
+fu_sensor
+
+SHOW SERIES
+key
+---
+fu_sensor,sensor=distance,stationid=rpi2utc
+fu_sensor,sensor=flow_rate,stationid=rpi2utc
+
+SHOW FIELD KEYS
+name: fu_sensor
+fieldKey    fieldType
+--------    ---------
+measurement float
+
+SHOW TAG KEYS
+name: fu_sensor
+tagKey
+------
+sensor
+stationid
+
+
+SELECT <field_key>[,<field_key>,<tag_key>] FROM <measurement_name>[,<measurement_name>] WHERE <conditional_expression> [(AND|OR) <conditional_expression> [...]]
+
+SELECT "measurement" FROM fu_sensor WHERE "sensor" = 'flow_rate' AND  time > now() - 1h
+
+```
 
 
 Line protocol
