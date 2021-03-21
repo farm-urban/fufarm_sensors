@@ -22,6 +22,18 @@ def send_data_to_influx(schema, data, include_timestamp=False):
     return send_data(schema, iline)
 
 
+def readings_to_influxdb_line(schema, readings, include_timestamp=False):
+    measurement = schema["measurement"]
+    tags = ",".join(["{}={}".format(k, v) for k, v in schema["tags"].items()])
+    fields = ",".join(["{}={}".format(k, v) for k, v in readings.items()])
+    iline = "{},{} {}".format(measurement, tags, fields)
+    if include_timestamp is True:
+        timestamp = datetime.utcnow()
+        iline += " {}000000000".format(timestamp)
+    iline += "\n"
+    return iline
+
+
 def send_data(schema, iline):
     """
     https://docs.influxdata.com/influxdb/v2.0/api/#tag/Write
@@ -51,21 +63,9 @@ def send_data(schema, iline):
                  requests.exceptions.Timeout) as e:
             logger.error("Network error: {}\nstatus_code: {}\ntext: {}".format(e, response.status_code, response.text))
             tries += 1
-            if number_of_retries != 0:
+            if number_of_retries > 0:
                 retry = tries < number_of_retries
     return success
-
-
-def readings_to_influxdb_line(schema, readings, include_timestamp=False):
-    measurement = schema["measurement"]
-    tags = ",".join(["{}={}".format(k, v) for k, v in schema["tags"].items()])
-    fields = ",".join(["{}={}".format(k, v) for k, v in readings.items()])
-    iline = "{},{} {}".format(measurement, tags, fields)
-    if include_timestamp is True:
-        timestamp = datetime.utcnow()
-        iline += " {}000000000".format(timestamp)
-    iline += "\n"
-    return iline
 
 
 MOCK = False
@@ -92,7 +92,7 @@ influx_schema = {
 
 
 logging.basicConfig(
-    level=logging.DEBUG, format="%(asctime)s [laurence_experiment]: %(message)s"
+    level=logging.INFO, format="%(asctime)s [loz_experiment]: %(message)s"
 )
 logger = logging.getLogger()
 
@@ -105,7 +105,7 @@ while True:
             data = json.loads(line)
             # logger.info("Got data:%s",data)
         except json.decoder.JSONDecodeError as e:
-            logger.warning("Error reading data:%s", e)
+            logger.warning("Error reading Arduino data:%s", e)
             continue
         send_data_to_influx(influx_schema, data, include_timestamp=INCLUDE_TIMESTAMP)
         time.sleep(POLL_INTERVAL)
