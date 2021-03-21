@@ -1,6 +1,23 @@
 #!/bin/bash
-# arduino-cli lib search debouncer
+
 LIBDIR=$HOME/Arduino/libraries
+CLI_DIR=/opt/arduino-cli
+
+export PATH=$CLI_DIR/bin:$PATH
+if [ ! -f  $CLI_DIR/bin/arduino-cli ]
+then
+    echo "Running setup"
+    mkdir $CLI_DIR
+    pushd $CLI_DIR
+    curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
+    popd
+    arduino-cli config init
+    arduino-cli core update-index
+    arduino-cli core install  arduino:avr
+fi
+
+# arduino-cli board list
+# arduino-cli lib search debouncer
 
 # For SEN0137 Temperature and Humidity sensor
 arduino-cli lib install "DHT sensor library for ESPx"
