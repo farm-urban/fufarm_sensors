@@ -68,8 +68,9 @@ def send_data(schema, iline):
     return success
 
 
-MOCK = False
+MOCK = True
 POLL_INTERVAL = 5
+LOG_LEVEL = logging.DEBUG
 
 STATION_ID = "rpiard1"
 MEASUREMENT = "LozExpt"
@@ -92,7 +93,7 @@ influx_schema = {
 
 
 logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s [loz_experiment]: %(message)s"
+    level=LOG_LEVEL, format="%(asctime)s [loz_experiment]: %(message)s"
 )
 logger = logging.getLogger()
 
