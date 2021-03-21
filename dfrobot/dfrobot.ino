@@ -7,6 +7,7 @@
 
 // Time in milliseconds
 #define SAMPLE_WINDOW 5000
+char sbuff[150];
 
 // Analog Inputs
 int co2Pin = A0;
@@ -46,6 +47,10 @@ float getEC(int ecPin, float temperature){
 int getCO2(int analogPin){
     // Calculate CO2 concentration in ppm
     int sensorValue = analogRead(analogPin);
+/*
+    sprintf(sbuff, "sensorValue1 is %d",sensorValue);
+    Serial.println(sbuff);
+*/
     float voltage = sensorValue*(5000/1024.0);
     if(voltage == 0)
     {
