@@ -135,11 +135,11 @@ void loop() {
     float ph = getPH(phPin, twet);
 
     // json
-    doc["temperature"] = t;
+    doc["tempair"] = t;
     doc["humidity"] = h;
-    doc["temperature_wet"] = twet;
+    doc["tempwet"] = twet;
     doc["co2"] = co2;
-    doc["ec"] = ec;
+    doc["cond"] = ec; // For unfathomable reasons influxdb won't accept ec as a name. WTF?!?!?!@@
     doc["ph"] = ph;
     serializeJson(doc, Serial);
 
