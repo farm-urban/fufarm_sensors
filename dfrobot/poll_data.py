@@ -24,12 +24,13 @@ def send_data_to_influx(schema, data, include_timestamp=False):
 
 def readings_to_influxdb_line(schema, readings, include_timestamp=False):
     measurement = schema["measurement"]
+    #readings['co'] = readings.pop('co2')
     tags = ",".join(["{}={}".format(k, v) for k, v in schema["tags"].items()])
-    fields = ",".join(["{}={}".format(k, v) for k, v in readings.items()])
+    fields = ",".join(["{}={:e}".format(k, v) for k, v in readings.items()])
     iline = "{},{} {}".format(measurement, tags, fields)
     if include_timestamp is True:
-        timestamp = datetime.utcnow()
-        iline += " {}000000000".format(timestamp)
+        timestamp = int(time.time()*1000000000)
+        iline += " {}".format(timestamp)
     iline += "\n"
     return iline
 
@@ -68,18 +69,18 @@ def send_data(schema, iline):
     return success
 
 
-MOCK = True
-POLL_INTERVAL = 5
-LOG_LEVEL = logging.DEBUG
+MOCK = False
+POLL_INTERVAL = 5*60
+LOG_LEVEL = logging.INFO
 
 STATION_ID = "rpiard1"
 MEASUREMENT = "LozExpt"
-BUCKET = "LaurenceExperiments"
-TOKEN = "HKlpgdVMvW_pyDemAnSkW1ZQHny14G5wFCAMQdrYR-20Nc_QlbVRJmEowXMxVGSus2O73TUm24hkwVQgWkkI2Q=="
+BUCKET = "Loz_test"
+TOKEN = "SibMj38WbdjAWgrjZMRF2aBCeiE3vK44drLuG-Ioee9C-cTPJydc9KoBFu1-A9vEa4vAzwjX-WjKBulAOrkcXA=="
 ORG = "accounts@farmurban.co.uk"
 INFLUX_URL = "https://westeurope-1.azure.cloud2.influxdata.com"
 ARDUINO_TERMINAL = "/dev/ttyACM0"
-INCLUDE_TIMESTAMP = False
+INCLUDE_TIMESTAMP = True
 
 
 influx_schema = {
@@ -106,7 +107,7 @@ while True:
             data = json.loads(line)
             # logger.info("Got data:%s",data)
         except json.decoder.JSONDecodeError as e:
-            logger.warning("Error reading Arduino data:%s", e)
+            logger.warning("Error reading Arduino data: %s\nDoc was: %s", e.msg, e.doc)
             continue
         send_data_to_influx(influx_schema, data, include_timestamp=INCLUDE_TIMESTAMP)
         time.sleep(POLL_INTERVAL)
