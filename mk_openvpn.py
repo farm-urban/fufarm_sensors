@@ -28,6 +28,9 @@ nobind
 persist-key
 persist-tun
 cipher AES-256-CBC
+script-security 2
+up /etc/openvpn/update-resolv-conf
+down /etc/openvpn/update-resolv-conf
 
 key-direction 1
 
