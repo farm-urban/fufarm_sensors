@@ -51,6 +51,9 @@ arduino-cli lib install OneWire
 # JSON
 arduino-cli lib install ArduinoJson
 
+# Wifi for Wifi Uni
+# arduino-cli lib install WiFiNINA
+
 # DEFOBOT EC
 #wget https://github.com/DFRobot/DFRobot_EC/archive/master.zip
 #unzip master.zip
