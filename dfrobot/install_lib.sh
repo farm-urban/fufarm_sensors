@@ -1,19 +1,42 @@
 #!/bin/bash
 
-LIBDIR=$HOME/Arduino/libraries
-CLI_DIR=/opt/arduino-cli
+function getPlatform {
+    case $(uname -s) in
+        Linux*)     machine=Linux;;
+        Darwin*)    machine=Mac;;
+        CYGWIN*)    machine=Cygwin;;
+        MINGW*)     machine=MinGw;;
+        *)          machine="UNKNOWN:${unameOut}"
+    esac
+    echo ${machine}
+}
 
-export PATH=$CLI_DIR/bin:$PATH
-if [ ! -f  $CLI_DIR/bin/arduino-cli ]
-then
-    echo "Running setup"
-    mkdir $CLI_DIR
-    pushd $CLI_DIR
-    curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
-    popd
-    arduino-cli config init
-    arduino-cli core update-index
-    arduino-cli core install  arduino:avr
+
+platform=$(getPlatform)
+if [ ${platform} = Linux ]; then
+    LIBDIR=$HOME/Arduino/libraries
+elif [ ${platform} = Mac ]; then
+    LIBDIR=$HOME/Documents/Arduino/libraries
+else
+  echo "Unsupported Platform: ${platform}"
+  exit 1;
+fi
+
+# Set up cli on Linux - on OSX just use "brew install arduino-cli"
+if [ ${platform} = Linux ]; then
+    CLI_DIR=/opt/arduino-cli
+    export PATH=$CLI_DIR/bin:$PATH
+    if [ ! -f  $CLI_DIR/bin/arduino-cli ]
+    then
+        echo "Running setup"
+        mkdir $CLI_DIR
+        pushd $CLI_DIR
+        curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
+        popd
+        arduino-cli config init
+        arduino-cli core update-index
+        arduino-cli core install  arduino:avr
+    fi
 fi
 
 # arduino-cli board list
