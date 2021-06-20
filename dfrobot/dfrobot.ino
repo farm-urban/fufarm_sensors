@@ -13,19 +13,18 @@ char sbuff[150];
 int co2Pin = A0;
 int ecPin = A1;
 int phPin = A2;
+
 // Digital Inputs
-int dhtPin = 2;
-int DS18S20_Pin = 3;
+int dhtPin = 2; // Temp and Humidity
+int DS18S20_Pin = 3; // Wet temperature
+int SEN0217_Pin = 4; // Flow sensor
 
-
-// Temperature and Humidity
-DHTesp dht;
-// Wet temperature chip i/o
-OneWire ds(DS18S20_Pin);
-// EC probe
-DFRobot_EC ec_probe;
-// pH probe
-DFRobot_PH ph_probe;
+// Data collecting strucutures
+DHTesp dht; // Temperature and Humidity
+OneWire ds(DS18S20_Pin); // Wet temperature chip i/o
+DFRobot_EC ecProbe; // EC probe
+DFRobot_PH phProbe; // pH probe
+volatile int pulseCount; // Flow Sensor
 
 #define JSON_DOC_SIZE 200;
 const int jsize=JSON_DOC_SIZE;
@@ -34,13 +33,13 @@ StaticJsonDocument<jsize> doc;
 
 float getPH(int phPin, float temperature){
    float voltage = analogRead(phPin)/1024.0*5000;
-   return ph_probe.readPH(voltage,temperature);
+   return phProbe.readPH(voltage,temperature);
 }
 
 
 float getEC(int ecPin, float temperature){
    float voltage = analogRead(ecPin)/1024.0*5000;
-   return ec_probe.readEC(voltage,temperature);
+   return ecProbe.readEC(voltage,temperature);
 }
 
 
@@ -113,18 +112,38 @@ float getTempWet(){
   return TemperatureSum;
 }
 
+void flowPulse()
+{
+  pulseCount += 1;
+}
+
+
+double getFlow()
+/* From YF-S201 manual:
+    Pluse Characteristic:F=7Q(L/MIN).
+    2L/MIN=16HZ 4L/MIN=32.5HZ 6L/MIN=49.3HZ 8L/MIN=65.5HZ 10L/MIN=82HZ
+    sample_window is in seconds, so hz is pulseCount / SAMPLE_WINDOW
+ */
+{
+  double hertz = (double) (pulseCount * 1000.0 ) / SAMPLE_WINDOW;
+  pulseCount = 0; // reset flow counter
+  return hertz / 7.0;
+}
+
 void setup() {
     pinMode(LED_BUILTIN, OUTPUT);
     Serial.begin(9600);
     dht.setup(dhtPin, DHTesp::DHT22);
-    // Set the default voltage of the reference voltage
-    analogReference(DEFAULT);
-    ec_probe.begin();
-    ph_probe.begin();
+    analogReference(DEFAULT); // Set the default voltage of the reference voltage
+    attachInterrupt(digitalPinToInterrupt(SEN0217_Pin), flowPulse, RISING);
+    pulseCount = 0;
+    ecProbe.begin();
+    phProbe.begin();
 }
 
 
 void loop() {
+    //Serial.println("Starting main loop");
     //digitalWrite(LED_BUILTIN, HIGH);
     TempAndHumidity th = dht.getTempAndHumidity();
     float t = th.temperature;
@@ -141,9 +160,8 @@ void loop() {
     doc["co2"] = co2;
     doc["cond"] = ec; // For unfathomable reasons influxdb won't accept ec as a name. WTF?!?!?!@@
     doc["ph"] = ph;
+    doc["flow"] = getFlow();
     serializeJson(doc, Serial);
 
     delay(SAMPLE_WINDOW);
 }
-
-
