@@ -7,10 +7,9 @@
 #include "DFRobot_EC.h"
 #include "DFRobot_PH.h"
 
+#define MOCK 1;
 char ssid[] = "HAL8000";        // your network SSID (name)
 char pass[] = "ziLEUTWLj4x";    // your network password (use for WPA, or use as key for WEP)
-
-#define MOCK 1;
 
 /*
  * Need to update the firmware on the Wifi Uno Rev2 and upload the SSL certificate for INFLUXDB_SERVER
@@ -32,9 +31,12 @@ char pass[] = "ziLEUTWLj4x";    // your network password (use for WPA, or use as
 #define INFLUXDB_STATION_ID "ardwifi1"
 
 
+#ifdef MOCK
+#define SAMPLE_WINDOW 5000
+#else
 // Time in milliseconds - 5 minutes = 1000 * 60 * 5 = 300000
 #define SAMPLE_WINDOW 300000
-#define SAMPLE_WINDOW 5000
+#endif
 
 // Analog Inputs
 int lightPin = A0;
@@ -309,7 +311,7 @@ String createLineProtocol(float tempair, float tempwet, float humidity, int co2,
   lineProtocol += ",flow=";
   lineProtocol += String(flow, 1);
   lineProtocol += ",light=";
-  lineProtocol += String(light, 2);
+  lineProtocol += String(light, 1);
   return lineProtocol;
 }
 
