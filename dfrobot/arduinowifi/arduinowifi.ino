@@ -331,6 +331,7 @@ void loop() {
       client.println("Host: " + String(INFLUXDB_SERVER));
       client.println("Content-Type: text/plain");
       client.println("Authorization: Token " + String(INFLUXDB_TOKEN));
+      client.println("Connection: close");
       client.print("Content-Length: ");
       client.println(lineProtocol.length());
 //      client.println("Connection: close");
@@ -338,20 +339,16 @@ void loop() {
       client.print(lineProtocol);  // send HTTP body
       Serial.println(lineProtocol);
 
-      while(client.connected()) {
-        if(client.available()){
-          // read an incoming byte from the server and print it to serial monitor:
-          char c = client.read();
-          Serial.print(c);
-        }
-      }
-
-//    if (client.connected()) {
-//      client.stop();
-//    }
-
-    // the server's disconnected, stop the client:
-    client.stop();
+//      while(client.connected()) {
+//        if(client.available()){
+//          // read an incoming byte from the server and print it to serial monitor:
+//          char c = client.read();
+//          Serial.print(c);
+//        }
+//      }
+    if (client.connected()) {
+      client.stop();
+    }
     Serial.println();
     Serial.println("disconnected");
     } else {// if not connected:
