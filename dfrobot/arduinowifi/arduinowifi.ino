@@ -1,8 +1,6 @@
 #include <SPI.h>
 #include <WiFiNINA.h>
 
-#include <ArduinoJson.h>
-
 // Sensors
 #include "DHTesp.h"
 #include <OneWire.h>
@@ -11,11 +9,22 @@
 
 char ssid[] = "HAL8000";        // your network SSID (name)
 char pass[] = "ziLEUTWLj4x";    // your network password (use for WPA, or use as key for WEP)
-int wifiStatus = WL_IDLE_STATUS;     // the Wifi radio's status
+
+// InfluxDB v2 server url, e.g. https://eu-central-1-1.aws.cloud2.influxdata.com (Use: InfluxDB UI -> Load Data -> Client Libraries)
+#define INFLUXDB_SERVER "westeurope-1.azure.cloud2.influxdata.com"
+// InfluxDB v2 server or cloud API authentication token (Use: InfluxDB UI -> Data -> Tokens -> <select token>)
+#define INFLUXDB_TOKEN "SibMj38WbdjAWgrjZMRF2aBCeiE3vK44drLuG-Ioee9C-cTPJydc9KoBFu1-A9vEa4vAzwjX-WjKBulAOrkcXA=="
+// InfluxDB v2 organization id (Use: InfluxDB UI -> User -> About -> Common Ids )
+#define INFLUXDB_ORG "accounts@farmurban.co.uk"
+// InfluxDB v2 bucket name (Use: InfluxDB UI ->  Data -> Buckets)
+#define INFLUXDB_BUCKET "Loz_test"
+
+#define INFLUXDB_MEASUREMENT "LozExpt"
+#define INFLUXDB_STATION_ID "ardwifi1"
 
 
-// Time in milliseconds
-#define SAMPLE_WINDOW 5000
+// Time in milliseconds - 5 minutes = 1000 * 60 * 5
+#define SAMPLE_WINDOW 300000
 char sbuff[150];
 
 // Analog Inputs
@@ -35,23 +44,8 @@ DFRobot_EC ecProbe; // EC probe
 DFRobot_PH phProbe; // pH probe
 volatile int pulseCount; // Flow Sensor
 
-#define JSON_DOC_SIZE 200;
-const int jsize=JSON_DOC_SIZE;
-StaticJsonDocument<jsize> doc;
-
-
-// InfluxDB v2 server url, e.g. https://eu-central-1-1.aws.cloud2.influxdata.com (Use: InfluxDB UI -> Load Data -> Client Libraries)
-#define INFLUXDB_SERVER "westeurope-1.azure.cloud2.influxdata.com"
-// InfluxDB v2 server or cloud API authentication token (Use: InfluxDB UI -> Data -> Tokens -> <select token>)
-#define INFLUXDB_TOKEN "SibMj38WbdjAWgrjZMRF2aBCeiE3vK44drLuG-Ioee9C-cTPJydc9KoBFu1-A9vEa4vAzwjX-WjKBulAOrkcXA=="
-// InfluxDB v2 organization id (Use: InfluxDB UI -> User -> About -> Common Ids )
-#define INFLUXDB_ORG "accounts@farmurban.co.uk"
-// InfluxDB v2 bucket name (Use: InfluxDB UI ->  Data -> Buckets)
-#define INFLUXDB_BUCKET "Loz_test"
-
-#define INFLUXDB_MEASUREMENT "LozExpt"
-#define INFLUXDB_STATION_ID "ardwifi1"
-
+// Wifi control
+int wifiStatus = WL_IDLE_STATUS;     // the Wifi radio's status
 WiFiClient client;
 
 float getPH(int phPin, float temperature){
@@ -238,6 +232,31 @@ void setup() {
 
 }
 
+
+String createLineProtocol(float tempair, float tempwet, float humidity, int co2, float ec, float ph, float flow) {
+  String lineProtocol = INFLUXDB_MEASUREMENT;
+  // Tags
+  lineProtocol += ",stationid=";
+  lineProtocol += INFLUXDB_STATION_ID;
+  // Fields
+  lineProtocol += " tempair=";
+  lineProtocol += String(tempair, 2);
+  lineProtocol += ",tempwet=";
+  lineProtocol += String(tempwet, 2);
+  lineProtocol += ",humidity=";
+  lineProtocol += String(humidity, 2);
+  lineProtocol += ",co2=";
+  lineProtocol += co2;
+  lineProtocol += ",cond=";
+  lineProtocol += String(ec, 2);
+  lineProtocol += ",ph=";
+  lineProtocol += String(ph, 2);
+  lineProtocol += ",flow=";
+  lineProtocol += String(flow, 1);
+  return lineProtocol;
+}
+
+// From: https://github.com/tobiasschuerg/InfluxDB-Client-for-Arduino/blob/master/src/util/helpers.cpp
 static char invalidChars[] = "$&+,/:;=?@ <>#%{}|\\^~[]`";
 
 static char hex_digit(char c) {
@@ -271,74 +290,35 @@ void loop() {
     //Serial.println("Starting main loop");
     //digitalWrite(LED_BUILTIN, HIGH);
     TempAndHumidity th = dht.getTempAndHumidity();
-    float t = th.temperature;
-    float h = th.humidity;
+    float tempair = th.temperature;
+    float humidity = th.humidity;
     int co2 = getCO2(co2Pin);
-    float twet = getTempWet();
-    float ec = getEC(ecPin, twet);
-    float ph = getPH(phPin, twet);
-//
-//    // json
-//    doc["tempair"] = t;
-//    doc["humidity"] = h;
-//    doc["tempwet"] = twet;
-//    doc["co2"] = co2;
-//    doc["cond"] = ec; // For unfathomable reasons influxdb won't accept ec as a name. WTF?!?!?!@@
-//    doc["ph"] = ph;
-//    doc["flow"] = getFlow();
-//    serializeJson(doc, Serial);
+    float tempwet = getTempWet();
+    float ec = getEC(ecPin, tempwet);
+    float ph = getPH(phPin, tempwet);
+    float flow = getFlow();
 
-    // Clear fields for reusing the point. Tags will remain untouched
-//    influxPt.clearFields();
-//    influxPt.addField("tempair", t);
-//    influxPt.addField("humidity", th);
-//    influxPt.addField("tempwet", twet);
-//    influxPt.addField("co2", co2);
-//    influxPt.addField("cond", ec);
-//    influxPt.addField("ph", ph);
-//    influxPt.addField("flow", getFlow());
-//    String lineProtocol = INFLUXDB_MEASUREMENT + ",stationid=";
-
-    String lineProtocol = INFLUXDB_MEASUREMENT;
-    // Tags
-    lineProtocol += ",stationid=";
-    lineProtocol += INFLUXDB_STATION_ID;
-    //fields
-    lineProtocol += " tempair=";
-    lineProtocol += String(t, 2);
-    lineProtocol += ",tempwet=";
-    lineProtocol += String(h, 2);
-    lineProtocol += ",co2=";
-    lineProtocol += co2;
-    lineProtocol += ",cond=";
-    lineProtocol += String(ec, 2);
-    lineProtocol += ",ph=";
-    lineProtocol += String(ph, 2);
-    lineProtocol += ",flow=";
-    lineProtocol += String(getFlow(), 1);
-
-    String url = "/api/v2/write?org=" + urlEncode(INFLUXDB_ORG);
-    url += "&bucket=";
-    url += urlEncode(INFLUXDB_BUCKET);
-
+    String lineProtocol = createLineProtocol(tempair, tempwet, humidity, co2, ec, ph, flow);
+    
+    String influxdb_post_url = "/api/v2/write?org=" + urlEncode(INFLUXDB_ORG);
+    influxdb_post_url += "&bucket=";
+    influxdb_post_url += urlEncode(INFLUXDB_BUCKET);
 
      // if you get a connection, report back via serial:
     if (client.connectSSL(INFLUXDB_SERVER, 443)) {
-//    if (client.connect(INFLUXDB_SERVER, 80)) {
       Serial.println("connected");
-      client.println("POST " + url + " HTTP/1.1");
-      Serial.println("POST " + url + " HTTP/1.1");
+      client.println("POST " + influxdb_post_url + " HTTP/1.1");
       client.println("Host: " + String(INFLUXDB_SERVER));
       client.println("Content-Type: text/plain");
       client.println("Authorization: Token " + String(INFLUXDB_TOKEN));
       client.println("Connection: close");
       client.print("Content-Length: ");
       client.println(lineProtocol.length());
-//      client.println("Connection: close");
       client.println(); // end HTTP header
       client.print(lineProtocol);  // send HTTP body
       Serial.println(lineProtocol);
 
+// Debug return values
 //      while(client.connected()) {
 //        if(client.available()){
 //          // read an incoming byte from the server and print it to serial monitor:
