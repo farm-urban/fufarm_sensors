@@ -7,7 +7,7 @@
 #include "DFRobot_EC.h"
 #include "DFRobot_PH.h"
 
-#define MOCK 1;
+//#define MOCK;
 char ssid[] = "HAL8000";        // your network SSID (name)
 char pass[] = "ziLEUTWLj4x";    // your network password (use for WPA, or use as key for WEP)
 
@@ -65,26 +65,26 @@ int getCO2(int analogPin){
     // Calculate CO2 concentration in ppm
     int sensorValue = analogRead(analogPin);
     float voltage = sensorValue*(5000/1024.0);
-    if(voltage == 0)
+    if(voltage == 0.0)
     {
       // Error
       return -1.0;
     }
-    else if(voltage < 400)
+    else if(voltage < 400.0)
     {
       // Preheating
       return -2.0;
     }
     else
     {
-      int voltage_difference=voltage-400;
+      float voltage_difference = voltage-400.0;
       return (int) (voltage_difference*50.0/16.0);
     }
 }
 
-float getLight(int lightPin){
-  float light = analogRead(lightPin);
-  return light;
+int getLight(int lightPin){
+  float voltage = analogRead(lightPin);
+  return (int)(voltage/10.0);
 }
 
 float getEC(int ecPin, float temperature){
@@ -280,7 +280,6 @@ int sendData(String data){
       if (client.connected()) {
         client.stop();
       }
-      Serial.println();
       Serial.println("disconnected");
       return 0;
     } else {// if not connected:
@@ -290,7 +289,7 @@ int sendData(String data){
 }
 
 
-String createLineProtocol(float tempair, float tempwet, float humidity, int co2, float ec, float ph, float flow, float light) {
+String createLineProtocol(float tempair, float tempwet, float humidity, int co2, float ec, float ph, float flow, int light) {
   String lineProtocol = INFLUXDB_MEASUREMENT;
   // Tags
   lineProtocol += ",station_id=";
@@ -311,7 +310,7 @@ String createLineProtocol(float tempair, float tempwet, float humidity, int co2,
   lineProtocol += ",flow=";
   lineProtocol += String(flow, 1);
   lineProtocol += ",light=";
-  lineProtocol += String(light, 1);
+  lineProtocol += light;
   return lineProtocol;
 }
 
@@ -356,7 +355,7 @@ void loop() {
     float ec = getEC(ecPin, tempwet);
     float ph = getPH(phPin, tempwet);
     float flow = getFlow();
-    float light = getLight(lightPin);
+    int light = getLight(lightPin);
 
     String lineProtocol = createLineProtocol(tempair, tempwet, humidity, co2, ec, ph, flow, light);
     Serial.println(lineProtocol);
