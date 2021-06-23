@@ -10,6 +10,13 @@
 char ssid[] = "HAL8000";        // your network SSID (name)
 char pass[] = "ziLEUTWLj4x";    // your network password (use for WPA, or use as key for WEP)
 
+/*
+ * Need to update the firmware on the Wifi Uno Rev2 and upload the SSL certificate for INFLUXDB_SERVER
+ * Getting this to work required multipole attempts and deleting the arduino.cc certificate. Instructions
+ * are available at: https://github.com/xcape-io/ArduinoProps/blob/master/help/WifiNinaFirmware.md
+ * 
+ * */
+
 // InfluxDB v2 server url, e.g. https://eu-central-1-1.aws.cloud2.influxdata.com (Use: InfluxDB UI -> Load Data -> Client Libraries)
 #define INFLUXDB_SERVER "westeurope-1.azure.cloud2.influxdata.com"
 // InfluxDB v2 server or cloud API authentication token (Use: InfluxDB UI -> Data -> Tokens -> <select token>)
