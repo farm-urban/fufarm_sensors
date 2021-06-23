@@ -5,14 +5,15 @@
 #include "DFRobot_EC.h"
 #include "DFRobot_PH.h"
 
-// Time in milliseconds
+// Time in milliseconds - 5 minutes = 1000 * 60 * 5 = 300000
+#define SAMPLE_WINDOW 300000
 #define SAMPLE_WINDOW 5000
-char sbuff[150];
 
 // Analog Inputs
-int co2Pin = A0;
-int ecPin = A1;
-int phPin = A2;
+int lightPin = A0;
+int co2Pin = A1;
+int ecPin = A2;
+int phPin = A3;
 
 // Digital Inputs
 int dhtPin = 2; // Temp and Humidity
@@ -30,26 +31,24 @@ volatile int pulseCount; // Flow Sensor
 const int jsize=JSON_DOC_SIZE;
 StaticJsonDocument<jsize> doc;
 
+float getEC(int ecPin, float temperature){
+   float voltage = analogRead(ecPin)/1024.0*5000;
+   return ecProbe.readEC(voltage,temperature);
+}
+
+float getLight(int lightPin){
+  float light = analogRead(lightPin);
+  return light;
+}
 
 float getPH(int phPin, float temperature){
    float voltage = analogRead(phPin)/1024.0*5000;
    return phProbe.readPH(voltage,temperature);
 }
 
-
-float getEC(int ecPin, float temperature){
-   float voltage = analogRead(ecPin)/1024.0*5000;
-   return ecProbe.readEC(voltage,temperature);
-}
-
-
 int getCO2(int analogPin){
     // Calculate CO2 concentration in ppm
     int sensorValue = analogRead(analogPin);
-/*
-    sprintf(sbuff, "sensorValue1 is %d",sensorValue);
-    Serial.println(sbuff);
-*/
     float voltage = sensorValue*(5000/1024.0);
     if(voltage == 0)
     {
@@ -118,14 +117,14 @@ void flowPulse()
 }
 
 
-double getFlow()
+float getFlow()
 /* From YF-S201 manual:
     Pluse Characteristic:F=7Q(L/MIN).
     2L/MIN=16HZ 4L/MIN=32.5HZ 6L/MIN=49.3HZ 8L/MIN=65.5HZ 10L/MIN=82HZ
     sample_window is in seconds, so hz is pulseCount / SAMPLE_WINDOW
  */
 {
-  double hertz = (double) (pulseCount * 1000.0 ) / SAMPLE_WINDOW;
+  float hertz = (float) (pulseCount * 1000.0 ) / SAMPLE_WINDOW;
   pulseCount = 0; // reset flow counter
   return hertz / 7.0;
 }
@@ -152,6 +151,8 @@ void loop() {
     float twet = getTempWet();
     float ec = getEC(ecPin, twet);
     float ph = getPH(phPin, twet);
+    float flow = getFlow();
+    float light = getLight(lightPin);
 
     // json
     doc["tempair"] = t;
@@ -160,7 +161,8 @@ void loop() {
     doc["co2"] = co2;
     doc["cond"] = ec; // For unfathomable reasons influxdb won't accept ec as a name. WTF?!?!?!@@
     doc["ph"] = ph;
-    doc["flow"] = getFlow();
+    doc["flow"] = flow;
+    doc["light"] = light;
     serializeJson(doc, Serial);
 
     delay(SAMPLE_WINDOW);
