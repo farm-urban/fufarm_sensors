@@ -243,7 +243,7 @@ void setup() {
 String createLineProtocol(float tempair, float tempwet, float humidity, int co2, float ec, float ph, float flow) {
   String lineProtocol = INFLUXDB_MEASUREMENT;
   // Tags
-  lineProtocol += ",stationid=";
+  lineProtocol += ",station_id=";
   lineProtocol += INFLUXDB_STATION_ID;
   // Fields
   lineProtocol += " tempair=";
