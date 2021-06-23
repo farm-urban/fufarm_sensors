@@ -10,6 +10,8 @@
 char ssid[] = "HAL8000";        // your network SSID (name)
 char pass[] = "ziLEUTWLj4x";    // your network password (use for WPA, or use as key for WEP)
 
+#define MOCK 1;
+
 /*
  * Need to update the firmware on the Wifi Uno Rev2 and upload the SSL certificate for INFLUXDB_SERVER
  * Getting this to work required multipole attempts and deleting the arduino.cc certificate. Instructions
@@ -30,14 +32,16 @@ char pass[] = "ziLEUTWLj4x";    // your network password (use for WPA, or use as
 #define INFLUXDB_STATION_ID "ardwifi1"
 
 
-// Time in milliseconds - 5 minutes = 1000 * 60 * 5
+// Time in milliseconds - 5 minutes = 1000 * 60 * 5 = 300000
 #define SAMPLE_WINDOW 300000
-char sbuff[150];
+#define SAMPLE_WINDOW 5000
 
 // Analog Inputs
-int co2Pin = A0;
-int ecPin = A1;
-int phPin = A2;
+int lightPin = A0;
+int co2Pin = A1;
+int ecPin = A2;
+int phPin = A3;
+
 
 // Digital Inputs
 int dhtPin = 2; // Temp and Humidity
@@ -55,25 +59,9 @@ volatile int pulseCount; // Flow Sensor
 int wifiStatus = WL_IDLE_STATUS;     // the Wifi radio's status
 WiFiClient client;
 
-float getPH(int phPin, float temperature){
-   float voltage = analogRead(phPin)/1024.0*5000;
-   return phProbe.readPH(voltage,temperature);
-}
-
-
-float getEC(int ecPin, float temperature){
-   float voltage = analogRead(ecPin)/1024.0*5000;
-   return ecProbe.readEC(voltage,temperature);
-}
-
-
 int getCO2(int analogPin){
     // Calculate CO2 concentration in ppm
     int sensorValue = analogRead(analogPin);
-/*
-    sprintf(sbuff, "sensorValue1 is %d",sensorValue);
-    Serial.println(sbuff);
-*/
     float voltage = sensorValue*(5000/1024.0);
     if(voltage == 0)
     {
@@ -91,6 +79,23 @@ int getCO2(int analogPin){
       return (int) (voltage_difference*50.0/16.0);
     }
 }
+
+float getLight(int lightPin){
+  float light = analogRead(lightPin);
+  return light;
+}
+
+float getEC(int ecPin, float temperature){
+   float voltage = analogRead(ecPin)/1024.0*5000;
+   return ecProbe.readEC(voltage,temperature);
+}
+
+
+float getPH(int phPin, float temperature){
+   float voltage = analogRead(phPin)/1024.0*5000;
+   return phProbe.readPH(voltage,temperature);
+}
+
 
 float getTempWet(){
   //returns the temperature from one DS18S20 in DEG Celsius
@@ -136,24 +141,24 @@ float getTempWet(){
   return TemperatureSum;
 }
 
-void flowPulse()
-{
-  pulseCount += 1;
-}
 
-
-double getFlow()
+float getFlow()
 /* From YF-S201 manual:
     Pluse Characteristic:F=7Q(L/MIN).
     2L/MIN=16HZ 4L/MIN=32.5HZ 6L/MIN=49.3HZ 8L/MIN=65.5HZ 10L/MIN=82HZ
     sample_window is in milli seconds, so hz is pulseCount * 1000 / SAMPLE_WINDOW
  */
 {
-  double hertz = (double) (pulseCount * 1000.0 ) / SAMPLE_WINDOW;
+  float hertz = (float) (pulseCount * 1000.0 ) / SAMPLE_WINDOW;
   pulseCount = 0; // reset flow counter
   return hertz / 7.0;
 }
 
+
+void flowPulse()
+{
+  pulseCount += 1;
+}
 
 void printWifiData() {
   // print your board's IP address:
@@ -211,6 +216,9 @@ void setup() {
     ecProbe.begin();
     phProbe.begin();
 
+#ifdef MOCK
+  Serial.println("Skipping Wifi setup");
+#else
 
    // check for the WiFi module:
   if (WiFi.status() == WL_NO_MODULE) {
@@ -236,11 +244,51 @@ void setup() {
   Serial.print("You're connected to the network");
   printCurrentNet();
   printWifiData();
+  
+ #endif // ifdef MOCK
+}
 
+int sendData(String data){    
+    String influxdb_post_url = "/api/v2/write?org=" + urlEncode(INFLUXDB_ORG);
+    influxdb_post_url += "&bucket=";
+    influxdb_post_url += urlEncode(INFLUXDB_BUCKET);
+
+     // if you get a connection, report back via serial:
+    if (client.connectSSL(INFLUXDB_SERVER, 443)) {
+      Serial.println("connected");
+      client.println("POST " + influxdb_post_url + " HTTP/1.1");
+      client.println("Host: " + String(INFLUXDB_SERVER));
+      client.println("Content-Type: text/plain");
+      client.println("Authorization: Token " + String(INFLUXDB_TOKEN));
+      client.println("Connection: close");
+      client.print("Content-Length: ");
+      client.println(data.length());
+      client.println(); // end HTTP header
+      client.print(data);  // send HTTP body
+
+// Debug return values
+//      while(client.connected()) {
+//        if(client.available()){
+//          // read an incoming byte from the server and print it to serial monitor:
+//          char c = client.read();
+//          Serial.print(c);
+//        }
+//      }
+
+      if (client.connected()) {
+        client.stop();
+      }
+      Serial.println();
+      Serial.println("disconnected");
+      return 0;
+    } else {// if not connected:
+      Serial.println("connection failed");
+      return -1;
+    }
 }
 
 
-String createLineProtocol(float tempair, float tempwet, float humidity, int co2, float ec, float ph, float flow) {
+String createLineProtocol(float tempair, float tempwet, float humidity, int co2, float ec, float ph, float flow, float light) {
   String lineProtocol = INFLUXDB_MEASUREMENT;
   // Tags
   lineProtocol += ",station_id=";
@@ -260,6 +308,8 @@ String createLineProtocol(float tempair, float tempwet, float humidity, int co2,
   lineProtocol += String(ph, 2);
   lineProtocol += ",flow=";
   lineProtocol += String(flow, 1);
+  lineProtocol += ",light=";
+  lineProtocol += String(light, 2);
   return lineProtocol;
 }
 
@@ -304,43 +354,15 @@ void loop() {
     float ec = getEC(ecPin, tempwet);
     float ph = getPH(phPin, tempwet);
     float flow = getFlow();
+    float light = getLight(lightPin);
 
-    String lineProtocol = createLineProtocol(tempair, tempwet, humidity, co2, ec, ph, flow);
-    
-    String influxdb_post_url = "/api/v2/write?org=" + urlEncode(INFLUXDB_ORG);
-    influxdb_post_url += "&bucket=";
-    influxdb_post_url += urlEncode(INFLUXDB_BUCKET);
-
-     // if you get a connection, report back via serial:
-    if (client.connectSSL(INFLUXDB_SERVER, 443)) {
-      Serial.println("connected");
-      client.println("POST " + influxdb_post_url + " HTTP/1.1");
-      client.println("Host: " + String(INFLUXDB_SERVER));
-      client.println("Content-Type: text/plain");
-      client.println("Authorization: Token " + String(INFLUXDB_TOKEN));
-      client.println("Connection: close");
-      client.print("Content-Length: ");
-      client.println(lineProtocol.length());
-      client.println(); // end HTTP header
-      client.print(lineProtocol);  // send HTTP body
-      Serial.println(lineProtocol);
-
-// Debug return values
-//      while(client.connected()) {
-//        if(client.available()){
-//          // read an incoming byte from the server and print it to serial monitor:
-//          char c = client.read();
-//          Serial.print(c);
-//        }
-//      }
-    if (client.connected()) {
-      client.stop();
-    }
-    Serial.println();
-    Serial.println("disconnected");
-    } else {// if not connected:
-      Serial.println("connection failed");
-    }
+    String lineProtocol = createLineProtocol(tempair, tempwet, humidity, co2, ec, ph, flow, light);
+    Serial.println(lineProtocol);
+#ifdef MOCK
+    Serial.println("Not sending data");
+#else
+    int ret = sendData(lineProtocol);
+#endif //endif Mock
  
 //   // If no Wifi signal, try to reconnect it
 //  if ((WiFi.RSSI() == 0) && (wifiMulti.run() != WL_CONNECTED)) {
