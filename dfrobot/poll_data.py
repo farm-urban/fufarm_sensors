@@ -62,7 +62,7 @@ def send_data(schema, iline):
             break
          except (requests.exceptions.ConnectionError,
                  requests.exceptions.Timeout) as e:
-            logger.error("Network error: {}\nstatus_code: {}\ntext: {}".format(e, response.status_code, response.text))
+            logger.error("Network error: {}".format(e))
             tries += 1
             if number_of_retries > 0:
                 retry = tries < number_of_retries
