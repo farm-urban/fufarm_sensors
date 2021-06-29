@@ -6,8 +6,8 @@
 #include "DFRobot_PH.h"
 
 // Time in milliseconds - 5 minutes = 1000 * 60 * 5 = 300000
-#define SAMPLE_WINDOW 300000
 #define SAMPLE_WINDOW 5000
+#define SAMPLE_WINDOW 300000
 
 // Analog Inputs
 int lightPin = A0;
@@ -125,8 +125,6 @@ float getFlow()
  */
 {
   float hertz = (float) (pulseCount * 1000.0 ) / SAMPLE_WINDOW;
-  Serial.print("Pulse Count: ");
-  Serial.println(pulseCount);
   pulseCount = 0; // reset flow counter
   return hertz / 7.0;
 }
