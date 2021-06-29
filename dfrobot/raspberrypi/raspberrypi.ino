@@ -36,8 +36,8 @@ float getEC(int ecPin, float temperature){
    return ecProbe.readEC(voltage,temperature);
 }
 
-float getLight(int lightPin){
-  float light = analogRead(lightPin);
+int getLight(int lightPin){
+  int light = analogRead(lightPin);
   return light;
 }
 
@@ -125,6 +125,8 @@ float getFlow()
  */
 {
   float hertz = (float) (pulseCount * 1000.0 ) / SAMPLE_WINDOW;
+  Serial.print("Pulse Count: ");
+  Serial.println(pulseCount);
   pulseCount = 0; // reset flow counter
   return hertz / 7.0;
 }
@@ -152,7 +154,7 @@ void loop() {
     float ec = getEC(ecPin, twet);
     float ph = getPH(phPin, twet);
     float flow = getFlow();
-    float light = getLight(lightPin);
+    int light = getLight(lightPin);
 
     // json
     doc["tempair"] = t;
