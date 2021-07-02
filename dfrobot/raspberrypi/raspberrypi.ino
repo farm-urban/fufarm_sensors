@@ -6,8 +6,8 @@
 #include "DFRobot_PH.h"
 
 // Time in milliseconds - 5 minutes = 1000 * 60 * 5 = 300000
-#define SAMPLE_WINDOW 300000
 #define SAMPLE_WINDOW 5000
+#define SAMPLE_WINDOW 300000
 
 // Analog Inputs
 int lightPin = A0;
@@ -36,8 +36,8 @@ float getEC(int ecPin, float temperature){
    return ecProbe.readEC(voltage,temperature);
 }
 
-float getLight(int lightPin){
-  float light = analogRead(lightPin);
+int getLight(int lightPin){
+  int light = analogRead(lightPin);
   return light;
 }
 
@@ -152,7 +152,7 @@ void loop() {
     float ec = getEC(ecPin, twet);
     float ph = getPH(phPin, twet);
     float flow = getFlow();
-    float light = getLight(lightPin);
+    int light = getLight(lightPin);
 
     // json
     doc["tempair"] = t;
