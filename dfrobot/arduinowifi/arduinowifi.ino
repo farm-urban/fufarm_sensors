@@ -8,8 +8,13 @@
 #include "DFRobot_PH.h"
 
 //#define MOCK;
-char ssid[] = "HAL8000";        // your network SSID (name)
-char pass[] = "ziLEUTWLj4x";    // your network password (use for WPA, or use as key for WEP)
+//char ssid[] = "HAL8000";
+//char pass[] = "ziLEUTWLj4x"; 
+char ssid[] = "Vertical Farm Pilot";
+char pass[] = "1106FaRm1028";
+
+// Will be different depending on the reference voltage
+# define VOLTAGE_CONVERSION 5000;
 
 /*
  * Need to update the firmware on the Wifi Uno Rev2 and upload the SSL certificate for INFLUXDB_SERVER
@@ -50,7 +55,7 @@ int dhtPin = 2; // Temp and Humidity
 int DS18S20_Pin = 3; // Wet temperature
 int SEN0217_Pin = 4; // Flow sensor
 
-// Data collecting strucutures
+// Data collecting structures
 DHTesp dht; // Temperature and Humidity
 OneWire ds(DS18S20_Pin); // Wet temperature chip i/o
 DFRobot_EC ecProbe; // EC probe
@@ -63,8 +68,7 @@ WiFiClient client;
 
 int getCO2(int analogPin){
     // Calculate CO2 concentration in ppm
-    int sensorValue = analogRead(analogPin);
-    float voltage = sensorValue*(5000/1024.0);
+    float voltage = analogRead(analogPin)/1024.0*VOLTAGE_CONVERSION;
     if(voltage == 0.0)
     {
       // Error
@@ -83,18 +87,18 @@ int getCO2(int analogPin){
 }
 
 int getLight(int lightPin){
-  float voltage = analogRead(lightPin);
+  float voltage = analogRead(lightPin)/1024.0*VOLTAGE_CONVERSION;
   return (int)(voltage/10.0);
 }
 
 float getEC(int ecPin, float temperature){
-   float voltage = analogRead(ecPin)/1024.0*5000;
+   float voltage = analogRead(ecPin)/1024.0*VOLTAGE_CONVERSION;
    return ecProbe.readEC(voltage,temperature);
 }
 
 
 float getPH(int phPin, float temperature){
-   float voltage = analogRead(phPin)/1024.0*5000;
+   float voltage = analogRead(phPin)/1024.0*VOLTAGE_CONVERSION;
    return phProbe.readPH(voltage,temperature);
 }
 
@@ -208,48 +212,6 @@ void printMacAddress(byte mac[]) {
   Serial.println();
 }
 
-void setup() {
-    pinMode(LED_BUILTIN, OUTPUT);
-    Serial.begin(9600);
-    dht.setup(dhtPin, DHTesp::DHT22);
-    analogReference(DEFAULT); // Set the default voltage of the reference voltage
-    attachInterrupt(digitalPinToInterrupt(SEN0217_Pin), flowPulse, RISING);
-    pulseCount = 0;
-    ecProbe.begin();
-    phProbe.begin();
-
-#ifdef MOCK
-  Serial.println("Skipping Wifi setup");
-#else
-
-   // check for the WiFi module:
-  if (WiFi.status() == WL_NO_MODULE) {
-    Serial.println("Communication with WiFi module failed!");
-    while (true); // don't continue
-  }
-
-  String fv = WiFi.firmwareVersion();
-  if (fv < WIFI_FIRMWARE_LATEST_VERSION) {
-    Serial.println("Please upgrade the firmware");
-  }
- 
-  // attempt to connect to Wifi network:
-  while (wifiStatus != WL_CONNECTED) {
-    Serial.print("Attempting to connect to WPA SSID: ");
-    Serial.println(ssid);
-    // Connect to WPA/WPA2 network:
-    wifiStatus = WiFi.begin(ssid, pass);
-    // wait 10 seconds for connection:
-    delay(10000);
-  }
-  // you're connected now, so print out the data:
-  Serial.print("You're connected to the network");
-  printCurrentNet();
-  printWifiData();
-  
- #endif // ifdef MOCK
-}
-
 int sendData(String data){    
     String influxdb_post_url = "/api/v2/write?org=" + urlEncode(INFLUXDB_ORG);
     influxdb_post_url += "&bucket=";
@@ -343,6 +305,51 @@ String urlEncode(const char* src) {
    return ret;
 }
 
+void setup() {
+//    pinMode(LED_BUILTIN, OUTPUT);    
+    Serial.begin(9600);
+    dht.setup(dhtPin, DHTesp::DHT22);
+    
+    // https://www.arduino.cc/reference/en/language/functions/analog-io/analogreference/
+    //analogReference(DEFAULT); // Set the default voltage of the reference voltage
+    analogReference(VDD); // VDD: Vdd of the ATmega4809. 5V on the Uno WiFi Rev2
+    
+    attachInterrupt(digitalPinToInterrupt(SEN0217_Pin), flowPulse, RISING);
+    pulseCount = 0;
+    ecProbe.begin();
+    phProbe.begin();
+ 
+#ifdef MOCK
+  Serial.println("Skipping Wifi setup");
+#else
+   // check for the WiFi module:
+  if (WiFi.status() == WL_NO_MODULE) {
+    Serial.println("Communication with WiFi module failed!");
+    while (true); // don't continue
+  }
+
+  String fv = WiFi.firmwareVersion();
+  if (fv < WIFI_FIRMWARE_LATEST_VERSION) {
+    Serial.println("Please upgrade the firmware");
+  }
+ 
+  // attempt to connect to Wifi network:
+  while (wifiStatus != WL_CONNECTED) {
+    Serial.print("Attempting to connect to WPA SSID: ");
+    Serial.println(ssid);
+    // Connect to WPA/WPA2 network:
+    wifiStatus = WiFi.begin(ssid, pass);
+    // wait 10 seconds for connection:
+    delay(10000);
+  }
+  // you're connected now, so print out the data:
+  Serial.print("You're connected to the network");
+  printCurrentNet();
+  printWifiData();
+  
+ #endif //MOCK
+} // end setup
+
 
 void loop() {
     //Serial.println("Starting main loop");
@@ -371,4 +378,4 @@ void loop() {
 //  }
 
     delay(SAMPLE_WINDOW);
-}
+} // end loop
