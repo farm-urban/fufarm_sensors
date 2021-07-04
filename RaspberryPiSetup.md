@@ -437,6 +437,15 @@ server {
 }
 ```
 
+## Bluelab Setup
+1. To allow remote desktop access set `hdmi_force_hotplug=1` in `/boot/config.txt` and reboot.
+2. In `raspi-config` **Interface Options** enable VNC (might need to install vncserver-x11-serviced)
+3. Log in via ssh and forward X11 connection using: `ssh -Y pi@raspberrypi.local` - this is required because running the setup script via the remote desktop gave a blank yellow screen.
+4. Download connect software onto Pi from https://bluelab.com/united_kingdom/connect-software
+5. Make script `bluelab_connect_unix_2_1_9.sh` executable and run via xterm as sudo  - it will install into `/opt/Connect/Bluelab`
+6. Edit `/opt/Connect/Bluelab/connect` to add option `-Dsun.java2d.opengl=true` to the command-line flags.
+7. Scripts and logs are found in: `$HOME/.local/share/Bluelab/Connect/logs`
+
 ## Debugging/Maintainence commands
 ```
 sudo systemctl stop dhcpcd
@@ -451,7 +460,6 @@ sudo /etc/init.d/networking restart
 sudo ifconfig wlan0 down
 sudo ifconfig wlan0 up
 ```
-
 
 ## Actual sequence of commands
 ```
