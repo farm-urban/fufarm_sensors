@@ -10,7 +10,6 @@ from typing import Union
 import warnings
 
 LOGDIR = '/home/pi/.local/share/Bluelab/Connect/logs'
-
 GrowData = namedtuple('GrowData', ['timestamp', 'ec', 'ph', 'temp'])
 
 def get_last_log(logdir: Union[str, Path]):
@@ -60,7 +59,7 @@ def get_data(csv_file: Union[str, Path]):
             data.append(d)
     return data
 
-def extract_values(last_timestamp: datetime.datetime, poll_interval: int):
+def get_bluelab_data(last_timestamp: datetime.datetime, poll_interval: int):
     BUFFER = 30
     last_log = get_last_log(LOGDIR)
     data = get_data(last_log)
@@ -70,17 +69,20 @@ def extract_values(last_timestamp: datetime.datetime, poll_interval: int):
         if d.timestamp <= last_timestamp:
             continue
         values.append(d)
+    if not len(values):
+        return None
     interval = last_timestamp - d.timestamp
     if interval > datetime.timedelta(seconds=poll_interval + BUFFER):
-        raise RuntimeError(f"Last value is outside expected range: {last_timestamp}:{d.timestamp}-{interval}")
-    ec = sum([d.ec for d in data])/len(data)
-    ph = sum([d.ph for d in data])/len(data)
-    temp = sum([d.temp for d in data])/len(data)
+        raise RuntimeError(f"Last value is outside expected range: {last_timestamp}:{d.timestamp} | {interval}")
+    ec = sum([d.ec for d in values])/len(values)
+    ph = sum([d.ph for d in values])/len(values)
+    temp = sum([d.temp for d in values])/len(values)
     return [ec, ph, temp]
 
 
-poll_interval = 10 * 60
-last_timestamp = datetime.datetime.now() - datetime.timedelta(seconds=poll_interval)
-print(extract_values(last_timestamp, poll_interval))
+if __name__ == "__main__":
+    poll_interval = 5 * 60
+    last_timestamp = datetime.datetime.now() - datetime.timedelta(seconds=poll_interval)
+    print(get_bluelab_data(last_timestamp, poll_interval))
 
 
