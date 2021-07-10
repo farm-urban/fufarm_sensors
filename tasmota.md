@@ -30,3 +30,6 @@ mosquitto_sub -h 192.168.4.1 -p 1883  -t  stat/tasmota_5014E2/STATUS10
 # Turn switch on or off
 mosquitto_pub -h 192.168.4.1 -p 1883 -t cmnd/tasmota_5014E2/Power -m "1"
 mosquitto_pub -h 192.168.4.1 -p 1883 -t cmnd/tasmota_5014E2/Power -m "TOGGLE"
+
+# Change report interval
+mosquitto_pub -h 192.168.4.1 -p 1883 -t cmnd/tasmota_5014E2/TelePeriod -m "10"
