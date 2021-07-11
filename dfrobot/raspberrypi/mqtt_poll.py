@@ -17,15 +17,14 @@ import paho.mqtt.client as mqtt
 from datetime import datetime
 
 
-def send_data_to_influx(schema, data, include_timestamp=False):
-    iline = readings_to_influxdb_line(schema, data, include_timestamp=include_timestamp)
+def send_data_to_influx(schema, measurement, tags, fields, include_timestamp=False):
+    iline = readings_to_influxdb_line(measurement, tags, fields, include_timestamp=include_timestamp)
     return send_data(schema, iline)
 
 
-def readings_to_influxdb_line(schema, readings, include_timestamp=False):
-    measurement = schema["measurement"]
-    tags = ",".join(["{}={}".format(k, v) for k, v in schema["tags"].items()])
-    fields = ",".join(["{}={:e}".format(k, v) for k, v in readings.items()])
+def readings_to_influxdb_line(measurement, tags, fields, include_timestamp=False):
+    tags = ",".join(["{}={}".format(k, v) for k, v in tags.items()])
+    fields = ",".join(["{}={:e}".format(k, v) for k, v in fields.items()])
     iline = "{},{} {}".format(measurement, tags, fields)
     if include_timestamp is True:
         timestamp = int(time.time()*1000000000)
@@ -71,7 +70,6 @@ def send_data(schema, iline):
 MOCK = False
 LOG_LEVEL = logging.DEBUG
 
-STATION_ID = "rpie"
 MEASUREMENT = "EnergyTest"
 BUCKET = "HeathPower"
 TOKEN = "BvQj3U3Ldwvz5bP6FPa58Rv9tzIDxVC4eY5C8UVlKfyZxKGWh8vjuxe7sMFvTjSLHmKfkh3nXQooGXBbJWjgow=="
@@ -81,11 +79,9 @@ INCLUDE_TIMESTAMP = True
 
 influx_schema = {
     "endpoint": INFLUX_URL,
-    "org": ORG,
-    "token": TOKEN,
+    "org": ORG, "token": TOKEN,
     "bucket": BUCKET,
     "measurement": MEASUREMENT,
-    "tags": {"station_id": STATION_ID},
 }
 
 
@@ -96,31 +92,38 @@ logger = logging.getLogger()
 
 client = mqtt.Client()
 #client.username_pw_set(username, password=None)
+client.user_data_set({'influx_schema': influx_schema})
 client.connect("192.168.4.1", port=1883)
+
+# Add different plugs
 client.subscribe("tele/tasmota_5014E2/SENSOR")
+#client.subscribe("tele/tasmota_5014E2/SENSOR")
 
 def on_connect(client, userdata, flags, rc):
     print("Connected with result code "+str(rc))
 
 def on_message(client, userdata, message):
     """
-    {'Time': '1970-01-01T00:27:09', 'ENERGY': {'TotalStartTime': '2021-07-10T11:54:41', 'Total': 0.002, 'Yesterday': 0.0, 'Today': 0.002, 'Period': 0, 'Power': 0, 'ApparentPower': 0, 'ReactivePower': 0, 'Factor': 0.0, 'Voltage': 0, 'Current': 0.0}}
+    Process message of format:
+
+    Received message on topic [tele/tasmota_5014E2/SENSOR]: {"Time":"1970-01-01T00:33:28","ENERGY":{"TotalStartTime":"2021-07-10T11:54:41","Total":0.003,"Yesterday":0.000,"Today":0.003,"Period":0,"Power":22,"ApparentPower":24,"ReactivePower":11,"Factor":0.90,"Voltage":246,"Current":0.098}}
+
     """
     decoded_message = str(message.payload.decode("utf-8"))
-    logger.log(logging.INFO, f"received message on topic [{message.topic}]: {decoded_message}")
+    logger.debug(f"Received message on topic [{message.topic}]: {decoded_message}")
     try:
         data = json.loads(decoded_message)
-        #logger.info("Got data:%s",data)
     except json.decoder.JSONDecodeError as e:
-        logger.warning("Error reading Arduino data: %s\nDoc was: %s", e.msg, e.doc)
-    data = data['ENERGY']
-    data.pop('TotalStartTime')
-    send_data_to_influx(influx_schema, data, include_timestamp=INCLUDE_TIMESTAMP)
+        logger.warning(f"Error decoding MQTT data to JSON: {e.msg}\nMessage was: {e.doc}")
+    # Process individual message
+    influx_schema = userdata["influx_schema"]
+    measurement = influx_schema["measurement"]
+    tags = {'station_id' : message.topic.split("/")[1]}
+    fields = data['ENERGY']
+    fields['TotalStartTime'] = datetime.strptime(fields['TotalStartTime'],"%Y-%m-%dT%H:%M:%S").timestamp() 
+    send_data_to_influx(influx_schema, measurement, tags, fields, include_timestamp=INCLUDE_TIMESTAMP)
 
 client.on_message = on_message
 client.on_connect = on_connect
-#client.loop_start()
 client.loop_forever()
-
-
 
