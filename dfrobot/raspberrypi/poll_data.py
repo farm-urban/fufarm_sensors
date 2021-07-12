@@ -17,16 +17,14 @@ import time
 from datetime import datetime
 
 
-def send_data_to_influx(schema, data, include_timestamp=False):
-    iline = readings_to_influxdb_line(schema, data, include_timestamp=include_timestamp)
+def send_data_to_influx(schema, measurement, tags, fields, include_timestamp=False):
+    iline = readings_to_influxdb_line(measurement, tags, fields, include_timestamp=include_timestamp)
     return send_data(schema, iline)
 
 
-def readings_to_influxdb_line(schema, readings, include_timestamp=False):
-    measurement = schema["measurement"]
-    #readings['co'] = readings.pop('co2')
-    tags = ",".join(["{}={}".format(k, v) for k, v in schema["tags"].items()])
-    fields = ",".join(["{}={:e}".format(k, v) for k, v in readings.items()])
+def readings_to_influxdb_line(measurement, tags, fields, include_timestamp=False):
+    tags = ",".join(["{}={}".format(k, v) for k, v in tags.items()])
+    fields = ",".join(["{}={:e}".format(k, v) for k, v in fields.items() if v is not None])
     iline = "{},{} {}".format(measurement, tags, fields)
     if include_timestamp is True:
         timestamp = int(time.time()*1000000000)
@@ -69,9 +67,10 @@ def send_data(schema, iline):
     return success
 
 
-MOCK = False
+MOCK = True
 POLL_INTERVAL = 5*60
-LOG_LEVEL = logging.INFO
+POLL_INTERVAL = 5
+LOG_LEVEL = logging.DEBUG
 
 STATION_ID = "rpiard1"
 MEASUREMENT = "LozExpt"
@@ -82,14 +81,12 @@ INFLUX_URL = "https://westeurope-1.azure.cloud2.influxdata.com"
 ARDUINO_TERMINAL = "/dev/ttyACM0"
 INCLUDE_TIMESTAMP = True
 
-
+influx_tags = {"station_id": STATION_ID}
 influx_schema = {
     "endpoint": INFLUX_URL,
     "org": ORG,
     "token": TOKEN,
     "bucket": BUCKET,
-    "measurement": MEASUREMENT,
-    "tags": {"station_id": STATION_ID},
 }
 
 
@@ -109,5 +106,5 @@ while True:
         except json.decoder.JSONDecodeError as e:
             logger.warning("Error reading Arduino data: %s\nDoc was: %s", e.msg, e.doc)
             continue
-        send_data_to_influx(influx_schema, data, include_timestamp=INCLUDE_TIMESTAMP)
+        send_data_to_influx(influx_schema, MEASUREMENT, influx_tags, data, include_timestamp=INCLUDE_TIMESTAMP)
         time.sleep(POLL_INTERVAL)

@@ -8,13 +8,12 @@ screen -S arduino  /dev/ttyACM0 9600
 Kill session: ctrl-A K 
 
 """
+from datetime import datetime
 import logging
 import json
 import requests
 import time
 import paho.mqtt.client as mqtt
-
-from datetime import datetime
 
 
 def send_data_to_influx(schema, measurement, tags, fields, include_timestamp=False):
@@ -24,7 +23,7 @@ def send_data_to_influx(schema, measurement, tags, fields, include_timestamp=Fal
 
 def readings_to_influxdb_line(measurement, tags, fields, include_timestamp=False):
     tags = ",".join(["{}={}".format(k, v) for k, v in tags.items()])
-    fields = ",".join(["{}={:e}".format(k, v) for k, v in fields.items()])
+    fields = ",".join(["{}={:e}".format(k, v) for k, v in fields.items() if v is not None])
     iline = "{},{} {}".format(measurement, tags, fields)
     if include_timestamp is True:
         timestamp = int(time.time()*1000000000)
@@ -93,10 +92,13 @@ logger = logging.getLogger()
 client = mqtt.Client()
 #client.username_pw_set(username, password=None)
 client.user_data_set({'influx_schema': influx_schema})
-client.connect("192.168.4.1", port=1883)
+#client.connect("192.168.4.1", port=1883)
+client.connect("localhost", port=1883)
 
 # Add different plugs
-client.subscribe("tele/tasmota_5014E2/SENSOR")
+client.subscribe("tele/FU_Fans/SENSOR")
+client.subscribe("tele/FU_System_1/SENSOR")
+client.subscribe("tele/FU_System_2/SENSOR")
 #client.subscribe("tele/tasmota_5014E2/SENSOR")
 
 def on_connect(client, userdata, flags, rc):

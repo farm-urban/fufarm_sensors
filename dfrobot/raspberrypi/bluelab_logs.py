@@ -99,7 +99,7 @@ Time (Europe/London),Conductivity unit,Temperature unit,52rf Conductivity,52rf p
                 data.append([d1, d2])
     return data
 
-def get_bluelab_data(last_timestamp: datetime.datetime, poll_interval: int):
+def sample_bluelab_data(last_timestamp: datetime.datetime, poll_interval: int):
     BUFFER = 30
     last_log = get_last_log(LOGDIR)
     data = get_data(last_log)
@@ -142,6 +142,6 @@ def get_bluelab_data(last_timestamp: datetime.datetime, poll_interval: int):
 if __name__ == "__main__":
     poll_interval = 50000 * 60
     last_timestamp = datetime.datetime.now() - datetime.timedelta(seconds=poll_interval)
-    print(get_bluelab_data(last_timestamp, poll_interval))
+    print(sample_bluelab_data(last_timestamp, poll_interval))
 
 
