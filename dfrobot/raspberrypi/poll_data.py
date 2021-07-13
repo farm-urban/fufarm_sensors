@@ -124,7 +124,7 @@ LOCAL_TIMESTAMP = True
 ARDUINO_TERMINAL = "/dev/ttyACM0"
 
 BUCKET = "Heath"
-TOKEN = "BvQj3U3Ldwvz5bP6FPa58Rv9tzIDxVC4eY5C8UVlKfyZxKGWh8vjuxe7sMFvTjSLHmKfkh3nXQooGXBbJWjgow=="
+TOKEN = open('TOKEN').readline().strip()
 ORG = "accounts@farmurban.co.uk"
 INFLUX_URL = "https://westeurope-1.azure.cloud2.influxdata.com"
 influx_schema = {
