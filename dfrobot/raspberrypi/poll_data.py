@@ -8,7 +8,7 @@ screen -S arduino  /dev/ttyACM0 9600
 Kill session: ctrl-A K 
 
 """
-from datetime import datetime, timedelta
+import datetime
 import logging
 import json
 import requests
@@ -34,7 +34,7 @@ def readings_to_influxdb_line(measurement, tags, fields, timestamp=None, local_t
     iline = "{},{} {}".format(measurement, tags, fields)
 
     if timestamp or local_timestamp:
-        if timestamp and isinstance(timestamp, datetime):
+        if timestamp and isinstance(timestamp, datetime.datetime):
             timestamp = int(float(timestamp.strftime("%s.%f"))*1000000000)
         if local_timestamp:
             #timestamp = int(time.time()*1000000000)
@@ -103,12 +103,13 @@ def on_mqtt_message(client, userdata, message):
     tags = {'station_id' : station_id}
 
     fields = data['ENERGY']
-    fields['TotalStartTime'] = datetime.strptime(fields['TotalStartTime'],"%Y-%m-%dT%H:%M:%S").timestamp() 
+    fields['TotalStartTime'] = datetime.datetime.strptime(fields['TotalStartTime'],"%Y-%m-%dT%H:%M:%S").timestamp() 
     send_data_to_influx(influx_schema, measurement, tags, fields, local_timestamp=LOCAL_TIMESTAMP)
 
 
 MOCK = True
 POLL_INTERVAL =  60 * 2
+POLL_INTERVAL =  5
 LOG_LEVEL = logging.DEBUG
 
 MEASUREMENT_SENSOR = "sensors"
@@ -158,7 +159,7 @@ client.on_message = on_mqtt_message
 ser = serial.Serial(ARDUINO_TERMINAL, 9600, timeout=1)
 ser.flush()
 client.loop_start()
-last_timestamp = datetime.now() - timedelta(seconds=POLL_INTERVAL)
+last_timestamp = datetime.datetime.now() - datetime.timedelta(seconds=POLL_INTERVAL)
 while True:
     send = True
     if ser.in_waiting > 0:
@@ -185,6 +186,6 @@ while True:
                           'temp': d.temp}
                 send_data_to_influx(influx_schema, MEASUREMENT_BLUELAB, tags, fields, timestamp=d.timestamp)
 
-    last_timestamp = datetime.now()
+    last_timestamp = datetime.datetime.now()
     time.sleep(POLL_INTERVAL)
 

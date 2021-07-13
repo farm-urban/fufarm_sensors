@@ -6,8 +6,8 @@
 #include "DFRobot_PH.h"
 
 // Time in milliseconds - 5 minutes = 1000 * 60 * 5 = 300000
-#define SAMPLE_WINDOW 5000
 #define SAMPLE_WINDOW 300000
+#define SAMPLE_WINDOW 5000
 
 // Analog Inputs
 int lightPin = A0;
