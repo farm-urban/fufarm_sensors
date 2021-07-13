@@ -113,6 +113,7 @@ def sample_bluelab_data(last_timestamp: datetime.datetime, poll_interval: int):
         values.append(d)
     if not len(values):
         return None
+
     interval = last_timestamp - d1.timestamp
     if interval > datetime.timedelta(seconds=poll_interval + BUFFER):
         raise RuntimeError(f"Last value is outside expected range: {last_timestamp}:{d1.timestamp} | {interval}")
@@ -120,22 +121,30 @@ def sample_bluelab_data(last_timestamp: datetime.datetime, poll_interval: int):
     # Results are averages of all values
     results = []
     if nsystems == 1:
-        tag1 = values[0][0].tag
+        tag1 = values[-1][0].tag
+        timestamp1 = values[-1][0].timestamp
         ec1 = sum([d[0].ec for d in values])/len(values)
         ph1 = sum([d[0].ph for d in values])/len(values)
         temp1 = sum([d[0].temp for d in values])/len(values)
-        results.append([tag1, ec1, ph1, temp1])
+        d1 = GrowData(tag1, timestamp1, ec1, ph1, temp1)
+        results.append(d1)
+
     elif nsystems == 2:
-        tag1 = values[0][0].tag
+        tag1 = values[-1][0].tag
+        timestamp1 = values[-1][0].timestamp
         ec1 = sum([d[0].ec for d in values])/len(values)
         ph1 = sum([d[0].ph for d in values])/len(values)
         temp1 = sum([d[0].temp for d in values])/len(values)
-        results.append([tag1, ec1, ph1, temp1])
-        tag2 = values[0][1].tag
+        d1 = GrowData(tag1, timestamp1, ec1, ph1, temp1)
+        results.append(d1)
+
+        tag2 = values[-1][1].tag
+        timestamp2 = values[-1][1].timestamp
         ec2 = sum([d[1].ec for d in values])/len(values)
         ph2 = sum([d[1].ph for d in values])/len(values)
         temp2 = sum([d[1].temp for d in values])/len(values)
-        results.append([tag2, ec2, ph2, temp2])
+        d2 = GrowData(tag2, timestamp2, ec2, ph2, temp2)
+        results.append(d2)
     return results
 
 

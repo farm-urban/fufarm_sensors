@@ -8,7 +8,7 @@ screen -S arduino  /dev/ttyACM0 9600
 Kill session: ctrl-A K 
 
 """
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 import json
 import requests
@@ -70,55 +70,7 @@ def send_data(schema, iline):
     return success
 
 
-MOCK = True
-POLL_INTERVAL = 5
-LOG_LEVEL = logging.DEBUG
-
-MEASUREMENT_SENSOR = "sensors"
-MEASUREMENT_MQTT = "energy"
-MEASUREMENT_BLUELAB = "bluelab"
-SENSOR_STATION_ID = "rpi"
-INCLUDE_TIMESTAMP = True
-ARDUINO_TERMINAL = "/dev/ttyACM0"
-
-BUCKET = "Heath"
-TOKEN = "BvQj3U3Ldwvz5bP6FPa58Rv9tzIDxVC4eY5C8UVlKfyZxKGWh8vjuxe7sMFvTjSLHmKfkh3nXQooGXBbJWjgow=="
-ORG = "accounts@farmurban.co.uk"
-INFLUX_URL = "https://westeurope-1.azure.cloud2.influxdata.com"
-
-influx_schema = {
-    "endpoint": INFLUX_URL,
-    "org": ORG, "token": TOKEN,
-    "bucket": BUCKET,
-    "measurement": MEASUREMENT,
-}
-
-
-logging.basicConfig(
-    level=LOG_LEVEL, format="%(asctime)s [loz_experiment]: %(message)s"
-)
-logger = logging.getLogger()
-
-client = mqtt.Client()
-#client.username_pw_set(username, password=None)
-userdata = { 'influx_schema': influx_schema,
-             'measurement: MEASUREMENT_MQTT }
-client.user_data_set(userdata)
-#client.connect("192.168.4.1", port=1883)
-client.connect("localhost", port=1883)
-
-# Add different plugs
-client.subscribe("tele/FU_Fans/SENSOR")
-#client.subscribe("tele/FU_System_1/SENSOR")
-#client.subscribe("tele/FU_System_2/SENSOR")
-MQTT_TO_STATIONID = { 'FU_Fans': 'Propagation'}
-
-#client.subscribe("tele/tasmota_5014E2/SENSOR")
-
-#def on_connect(client, userdata, flags, rc):
-#    print("Connected with result code "+str(rc))
-
-def on_message(client, userdata, message):
+def on_mqtt_message(client, userdata, message):
     """
     Process message of format:
 
@@ -145,27 +97,83 @@ def on_message(client, userdata, message):
     fields['TotalStartTime'] = datetime.strptime(fields['TotalStartTime'],"%Y-%m-%dT%H:%M:%S").timestamp() 
     send_data_to_influx(influx_schema, measurement, tags, fields, include_timestamp=INCLUDE_TIMESTAMP)
 
-client.on_message = on_message
-#client.on_connect = on_connect
-#client.loop_forever()
+
+MOCK = True
+POLL_INTERVAL =  60 * 2
+LOG_LEVEL = logging.DEBUG
+
+MEASUREMENT_SENSOR = "sensors"
+MEASUREMENT_MQTT = "energy"
+MEASUREMENT_BLUELAB = "bluelab"
+SENSOR_STATION_ID = "rpi"
+MQTT_TO_STATIONID = { 'FU_Fans': 'Propagation'}
+BLUELAB_TAG_TO_STATIONID = { '52rf': 'sys1',
+                             '4q3f': 'sys2'}
+INCLUDE_TIMESTAMP = True
+ARDUINO_TERMINAL = "/dev/ttyACM0"
+
+BUCKET = "Heath"
+TOKEN = "BvQj3U3Ldwvz5bP6FPa58Rv9tzIDxVC4eY5C8UVlKfyZxKGWh8vjuxe7sMFvTjSLHmKfkh3nXQooGXBbJWjgow=="
+ORG = "accounts@farmurban.co.uk"
+INFLUX_URL = "https://westeurope-1.azure.cloud2.influxdata.com"
+influx_schema = {
+    "endpoint": INFLUX_URL,
+    "org": ORG, "token": TOKEN,
+    "bucket": BUCKET,
+}
+sensor_influx_tags = {'station_id': SENSOR_STATION_ID}
+
+# Logging
+logging.basicConfig(
+    level=LOG_LEVEL, format="%(asctime)s [loz_experiment]: %(message)s"
+)
+logger = logging.getLogger()
+
+## Setup MQTT
+client = mqtt.Client()
+#client.username_pw_set(username, password=None)
+userdata = { 'influx_schema': influx_schema,
+             'measurement': MEASUREMENT_MQTT}
+client.user_data_set(userdata)
+#client.connect("192.168.4.1", port=1883)
+client.connect("localhost", port=1883)
+
+# Add different plugs
+client.subscribe("tele/FU_Fans/SENSOR")
+#client.subscribe("tele/FU_System_1/SENSOR")
+#client.subscribe("tele/FU_System_2/SENSOR")
+#client.subscribe("tele/tasmota_5014E2/SENSOR")
+client.on_message = on_mqtt_message
 
 ser = serial.Serial(ARDUINO_TERMINAL, 9600, timeout=1)
 ser.flush()
 client.loop_start()
-influx_tags = {'station_id': SENSOR_STATION_ID}
+last_timestamp = datetime.now() - timedelta(seconds=POLL_INTERVAL)
 while True:
+    send = True
     if ser.in_waiting > 0:
         line = ser.readline().decode("utf-8").rstrip()
+        send = True
         try:
             data = json.loads(line)
             # logger.info("Got data:%s",data)
         except json.decoder.JSONDecodeError as e:
             logger.warning("Error reading Arduino data: %s\nDoc was: %s", e.msg, e.doc)
-            continue
-        send_data_to_influx(influx_schema, MEASUREMENT_SENSOR, influx_tags, data, include_timestamp=INCLUDE_TIMESTAMP)
+            send = False
+        if send: 
+            send_data_to_influx(influx_schema, MEASUREMENT_SENSOR, sensor_influx_tags, data, include_timestamp=INCLUDE_TIMESTAMP)
+    send = True
     
+    bluelab_data = bluelab_logs.sample_bluelab_data(last_timestamp, POLL_INTERVAL)
+    if bluelab_data is not None and len(bluelab_data) > 0:
+        for d in bluelab_data:
+            #  ['tag', 'timestamp', 'ec', 'ph', 'temp']
+            tags = {'station_id': BLUELAB_TAG_TO_STATIONID[d.tag]}
+            fields = {'cond': d.ec,
+                      'ph': d.ph,
+                      'temp': d.temp}
+            send_data_to_influx(influx_schema, MEASUREMENT_BLUELAB, tags, fields, include_timestamp=INCLUDE_TIMESTAMP)
+
+    last_timestamp = datetime.now()
     time.sleep(POLL_INTERVAL)
 
-    poll_interval = 50000 * 60
-    last_timestamp = datetime.datetime.now() - datetime.timedelta(seconds=poll_interval)
-    print(sample_bluelab_data(last_timestamp, poll_interval))
