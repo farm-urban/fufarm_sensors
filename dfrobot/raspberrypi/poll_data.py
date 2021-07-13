@@ -8,13 +8,16 @@ screen -S arduino  /dev/ttyACM0 9600
 Kill session: ctrl-A K 
 
 """
+from datetime import datetime
 import logging
 import json
 import requests
 import serial
 import time
+import paho.mqtt.client as mqtt
 
-from datetime import datetime
+# Local imports
+import bluelab_logs
 
 
 def send_data_to_influx(schema, measurement, tags, fields, include_timestamp=False):
@@ -68,25 +71,26 @@ def send_data(schema, iline):
 
 
 MOCK = True
-POLL_INTERVAL = 5*60
 POLL_INTERVAL = 5
 LOG_LEVEL = logging.DEBUG
 
-STATION_ID = "rpiard1"
-MEASUREMENT = "LozExpt"
-BUCKET = "Loz_test"
-TOKEN = "SibMj38WbdjAWgrjZMRF2aBCeiE3vK44drLuG-Ioee9C-cTPJydc9KoBFu1-A9vEa4vAzwjX-WjKBulAOrkcXA=="
+MEASUREMENT_SENSOR = "sensors"
+MEASUREMENT_MQTT = "energy"
+MEASUREMENT_BLUELAB = "bluelab"
+SENSOR_STATION_ID = "rpi"
+INCLUDE_TIMESTAMP = True
+ARDUINO_TERMINAL = "/dev/ttyACM0"
+
+BUCKET = "Heath"
+TOKEN = "BvQj3U3Ldwvz5bP6FPa58Rv9tzIDxVC4eY5C8UVlKfyZxKGWh8vjuxe7sMFvTjSLHmKfkh3nXQooGXBbJWjgow=="
 ORG = "accounts@farmurban.co.uk"
 INFLUX_URL = "https://westeurope-1.azure.cloud2.influxdata.com"
-ARDUINO_TERMINAL = "/dev/ttyACM0"
-INCLUDE_TIMESTAMP = True
 
-influx_tags = {"station_id": STATION_ID}
 influx_schema = {
     "endpoint": INFLUX_URL,
-    "org": ORG,
-    "token": TOKEN,
+    "org": ORG, "token": TOKEN,
     "bucket": BUCKET,
+    "measurement": MEASUREMENT,
 }
 
 
@@ -95,8 +99,60 @@ logging.basicConfig(
 )
 logger = logging.getLogger()
 
+client = mqtt.Client()
+#client.username_pw_set(username, password=None)
+userdata = { 'influx_schema': influx_schema,
+             'measurement: MEASUREMENT_MQTT }
+client.user_data_set(userdata)
+#client.connect("192.168.4.1", port=1883)
+client.connect("localhost", port=1883)
+
+# Add different plugs
+client.subscribe("tele/FU_Fans/SENSOR")
+#client.subscribe("tele/FU_System_1/SENSOR")
+#client.subscribe("tele/FU_System_2/SENSOR")
+MQTT_TO_STATIONID = { 'FU_Fans': 'Propagation'}
+
+#client.subscribe("tele/tasmota_5014E2/SENSOR")
+
+#def on_connect(client, userdata, flags, rc):
+#    print("Connected with result code "+str(rc))
+
+def on_message(client, userdata, message):
+    """
+    Process message of format:
+
+    Received message on topic [tele/tasmota_5014E2/SENSOR]: {"Time":"1970-01-01T00:33:28","ENERGY":{"TotalStartTime":"2021-07-10T11:54:41","Total":0.003,"Yesterday":0.000,"Today":0.003,"Period":0,"Power":22,"ApparentPower":24,"ReactivePower":11,"Factor":0.90,"Voltage":246,"Current":0.098}}
+
+    """
+    decoded_message = str(message.payload.decode("utf-8"))
+    logger.debug(f"Received message on topic [{message.topic}]: {decoded_message}")
+    try:
+        data = json.loads(decoded_message)
+    except json.decoder.JSONDecodeError as e:
+        logger.warning(f"Error decoding MQTT data to JSON: {e.msg}\nMessage was: {e.doc}")
+
+    # Process individual message
+    influx_schema = userdata["influx_schema"]
+    measurement = userdata["measurement"]
+
+    station_id = message.topic.split("/")[1]
+    if station_id in MQTT_TO_STATIONID.keys():
+        station_id = MQTT_TO_STATIONID[station_id]
+    tags = {'station_id' : station_id}
+
+    fields = data['ENERGY']
+    fields['TotalStartTime'] = datetime.strptime(fields['TotalStartTime'],"%Y-%m-%dT%H:%M:%S").timestamp() 
+    send_data_to_influx(influx_schema, measurement, tags, fields, include_timestamp=INCLUDE_TIMESTAMP)
+
+client.on_message = on_message
+#client.on_connect = on_connect
+#client.loop_forever()
+
 ser = serial.Serial(ARDUINO_TERMINAL, 9600, timeout=1)
 ser.flush()
+client.loop_start()
+influx_tags = {'station_id': SENSOR_STATION_ID}
 while True:
     if ser.in_waiting > 0:
         line = ser.readline().decode("utf-8").rstrip()
@@ -106,5 +162,10 @@ while True:
         except json.decoder.JSONDecodeError as e:
             logger.warning("Error reading Arduino data: %s\nDoc was: %s", e.msg, e.doc)
             continue
-        send_data_to_influx(influx_schema, MEASUREMENT, influx_tags, data, include_timestamp=INCLUDE_TIMESTAMP)
-        time.sleep(POLL_INTERVAL)
+        send_data_to_influx(influx_schema, MEASUREMENT_SENSOR, influx_tags, data, include_timestamp=INCLUDE_TIMESTAMP)
+    
+    time.sleep(POLL_INTERVAL)
+
+    poll_interval = 50000 * 60
+    last_timestamp = datetime.datetime.now() - datetime.timedelta(seconds=poll_interval)
+    print(sample_bluelab_data(last_timestamp, poll_interval))
