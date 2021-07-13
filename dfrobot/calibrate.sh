@@ -34,5 +34,5 @@ if [ $? -ne 0 ]; then
    exit 1
 fi
 
-echo "To access type: screen -S arduino  $atty 9600"
+echo "To access execute: screen -S arduino  $atty 9600"
 echo "To exit screen type: ctrl-a k"

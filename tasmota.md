@@ -6,6 +6,10 @@ sudo systemctl enable mosquitto
 sudo apt-get install python3-pip
 sudo pip3 install paho-mqtt
 
+
+# Need to add accuonts for each plug
+
+
 # To test
 
 # subscribe to all topics and show debug info
