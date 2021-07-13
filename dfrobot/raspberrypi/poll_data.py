@@ -20,18 +20,27 @@ import paho.mqtt.client as mqtt
 import bluelab_logs
 
 
-def send_data_to_influx(schema, measurement, tags, fields, include_timestamp=False):
-    iline = readings_to_influxdb_line(measurement, tags, fields, include_timestamp=include_timestamp)
+def send_data_to_influx(schema, measurement, tags, fields, timestamp=None, local_timestamp=False):
+    iline = readings_to_influxdb_line(measurement, tags, fields, timestamp=timestamp, local_timestamp=local_timestamp)
     return send_data(schema, iline)
 
 
-def readings_to_influxdb_line(measurement, tags, fields, include_timestamp=False):
+def readings_to_influxdb_line(measurement, tags, fields, timestamp=None, local_timestamp=False):
+    if timestamp and local_timestamp:
+        raise RuntimeError("Cannot include a timestamp with local_timestamp")
+
     tags = ",".join(["{}={}".format(k, v) for k, v in tags.items()])
     fields = ",".join(["{}={:e}".format(k, v) for k, v in fields.items() if v is not None])
     iline = "{},{} {}".format(measurement, tags, fields)
-    if include_timestamp is True:
-        timestamp = int(time.time()*1000000000)
+
+    if timestamp or local_timestamp:
+        if timestamp and isinstance(timestamp, datetime):
+            timestamp = int(float(timestamp.strftime("%s.%f"))*1000000000)
+        if local_timestamp:
+            #timestamp = int(time.time()*1000000000)
+            timestamp = int(float(datetime.datetime.utcnow().strftime("%s.%f"))*1000000000)
         iline += " {}".format(timestamp)
+
     iline += "\n"
     return iline
 
@@ -95,7 +104,7 @@ def on_mqtt_message(client, userdata, message):
 
     fields = data['ENERGY']
     fields['TotalStartTime'] = datetime.strptime(fields['TotalStartTime'],"%Y-%m-%dT%H:%M:%S").timestamp() 
-    send_data_to_influx(influx_schema, measurement, tags, fields, include_timestamp=INCLUDE_TIMESTAMP)
+    send_data_to_influx(influx_schema, measurement, tags, fields, local_timestamp=LOCAL_TIMESTAMP)
 
 
 MOCK = True
@@ -107,9 +116,10 @@ MEASUREMENT_MQTT = "energy"
 MEASUREMENT_BLUELAB = "bluelab"
 SENSOR_STATION_ID = "rpi"
 MQTT_TO_STATIONID = { 'FU_Fans': 'Propagation'}
+HAVE_BLUELAB=True
 BLUELAB_TAG_TO_STATIONID = { '52rf': 'sys1',
                              '4q3f': 'sys2'}
-INCLUDE_TIMESTAMP = True
+LOCAL_TIMESTAMP = True
 ARDUINO_TERMINAL = "/dev/ttyACM0"
 
 BUCKET = "Heath"
@@ -161,18 +171,19 @@ while True:
             logger.warning("Error reading Arduino data: %s\nDoc was: %s", e.msg, e.doc)
             send = False
         if send: 
-            send_data_to_influx(influx_schema, MEASUREMENT_SENSOR, sensor_influx_tags, data, include_timestamp=INCLUDE_TIMESTAMP)
+            send_data_to_influx(influx_schema, MEASUREMENT_SENSOR, sensor_influx_tags, data, local_timestamp=LOCAL_TIMESTAMP)
     send = True
     
-    bluelab_data = bluelab_logs.sample_bluelab_data(last_timestamp, POLL_INTERVAL)
-    if bluelab_data is not None and len(bluelab_data) > 0:
-        for d in bluelab_data:
-            #  ['tag', 'timestamp', 'ec', 'ph', 'temp']
-            tags = {'station_id': BLUELAB_TAG_TO_STATIONID[d.tag]}
-            fields = {'cond': d.ec,
-                      'ph': d.ph,
-                      'temp': d.temp}
-            send_data_to_influx(influx_schema, MEASUREMENT_BLUELAB, tags, fields, include_timestamp=INCLUDE_TIMESTAMP)
+    if HAVE_BLUELAB:
+        bluelab_data = bluelab_logs.sample_bluelab_data(last_timestamp, POLL_INTERVAL)
+        if bluelab_data is not None and len(bluelab_data) > 0:
+            for d in bluelab_data:
+                #  ['tag', 'timestamp', 'ec', 'ph', 'temp']
+                tags = {'station_id': BLUELAB_TAG_TO_STATIONID[d.tag]}
+                fields = {'cond': d.ec,
+                          'ph': d.ph,
+                          'temp': d.temp}
+                send_data_to_influx(influx_schema, MEASUREMENT_BLUELAB, tags, fields, timestamp=d.timestamp)
 
     last_timestamp = datetime.now()
     time.sleep(POLL_INTERVAL)
