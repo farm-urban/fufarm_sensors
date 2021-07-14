@@ -86,8 +86,15 @@ def on_mqtt_message(client, userdata, message):
     Received message on topic [tele/tasmota_5014E2/SENSOR]: {"Time":"1970-01-01T00:33:28","ENERGY":{"TotalStartTime":"2021-07-10T11:54:41","Total":0.003,"Yesterday":0.000,"Today":0.003,"Period":0,"Power":22,"ApparentPower":24,"ReactivePower":11,"Factor":0.90,"Voltage":246,"Current":0.098}}
 
     """
+    global h2pwr_currents
     decoded_message = str(message.payload.decode("utf-8"))
     logger.debug(f"Received message on topic [{message.topic}]: {decoded_message}")
+
+    if message.topic == "h2Pwr/STATUS":
+       current = float(decoded_message)   
+       h2pwr_currents.append(current)
+       return
+
     try:
         data = json.loads(decoded_message)
     except json.decoder.JSONDecodeError as e:
@@ -108,16 +115,15 @@ def on_mqtt_message(client, userdata, message):
 
 
 MOCK = True
-POLL_INTERVAL =  60 * 2
-POLL_INTERVAL =  5
+POLL_INTERVAL =  60 * 5
 LOG_LEVEL = logging.DEBUG
 
 MEASUREMENT_SENSOR = "sensors"
 MEASUREMENT_MQTT = "energy"
 MEASUREMENT_BLUELAB = "bluelab"
 SENSOR_STATION_ID = "rpi"
-MQTT_TO_STATIONID = { 'FU_Fans': 'Propagation'}
-HAVE_BLUELAB=True
+MQTT_TO_STATIONID = { 'FU_System_2': 'Propagation'}
+HAVE_BLUELAB=False
 BLUELAB_TAG_TO_STATIONID = { '52rf': 'sys1',
                              '4q3f': 'sys2'}
 LOCAL_TIMESTAMP = True
@@ -152,12 +158,14 @@ client.connect("localhost", port=1883)
 # Add different plugs
 client.subscribe("tele/FU_Fans/SENSOR")
 #client.subscribe("tele/FU_System_1/SENSOR")
-#client.subscribe("tele/FU_System_2/SENSOR")
+client.subscribe("tele/FU_System_2/SENSOR")
+client.subscribe("h2Pwr/STATUS")
 #client.subscribe("tele/tasmota_5014E2/SENSOR")
 client.on_message = on_mqtt_message
 
 ser = serial.Serial(ARDUINO_TERMINAL, 9600, timeout=1)
 ser.flush()
+h2pwr_currents = []
 client.loop_start()
 last_timestamp = datetime.datetime.now() - datetime.timedelta(seconds=POLL_INTERVAL)
 while True:
@@ -173,6 +181,12 @@ while True:
             send = False
         if send: 
             send_data_to_influx(influx_schema, MEASUREMENT_SENSOR, sensor_influx_tags, data, local_timestamp=LOCAL_TIMESTAMP)
+
+        # Clear anything remaining
+        while ser.in_waiting > 0:
+            c = ser.read()
+        ser.reset_input_buffer()
+        ser.reset_output_buffer()
     send = True
     
     if HAVE_BLUELAB:
@@ -185,6 +199,15 @@ while True:
                           'ph': d.ph,
                           'temp': d.temp}
                 send_data_to_influx(influx_schema, MEASUREMENT_BLUELAB, tags, fields, timestamp=d.timestamp)
+
+    if len(h2pwr_currents):
+        current = sum(h2pwr_currents)/len(h2pwr_currents)
+        logger.debug(f"Processed {h2pwr_currents} to give {current}")
+        h2_measurement = "h2pwr"
+        h2_tags = {'station_id': "rpi"}
+        h2_fields = {'current': current}
+        send_data_to_influx(influx_schema, h2_measurement, h2_tags, h2_fields, local_timestamp=True)
+        h2owr_currents = []
 
     last_timestamp = datetime.datetime.now()
     time.sleep(POLL_INTERVAL)
