@@ -114,9 +114,9 @@ def on_mqtt_message(client, userdata, message):
     send_data_to_influx(influx_schema, measurement, tags, fields, local_timestamp=LOCAL_TIMESTAMP)
 
 
-MOCK = True
+MOCK = False
 POLL_INTERVAL =  60 * 5
-LOG_LEVEL = logging.DEBUG
+LOG_LEVEL = logging.INFO
 
 MEASUREMENT_SENSOR = "sensors"
 MEASUREMENT_MQTT = "energy"
