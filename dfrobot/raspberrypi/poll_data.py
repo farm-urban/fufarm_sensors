@@ -37,8 +37,9 @@ def readings_to_influxdb_line(measurement, tags, fields, timestamp=None, local_t
         if timestamp and isinstance(timestamp, datetime.datetime):
             timestamp = int(float(timestamp.strftime("%s.%f"))*1000000000)
         if local_timestamp:
+            #timestamp = int(float(datetime.datetime.utcnow().strftime("%s.%f"))*1000000000)
             #timestamp = int(time.time()*1000000000)
-            timestamp = int(float(datetime.datetime.utcnow().strftime("%s.%f"))*1000000000)
+            timestamp = time.time_ns()
         iline += " {}".format(timestamp)
 
     iline += "\n"
@@ -67,7 +68,7 @@ def send_data(schema, iline):
     while retry:
          try:
             response = requests.post(url, headers=headers, params=params, data=iline)
-            logger.debug("Sent data - status_code: {}\ntext: {}".format(response.status_code, response.text))
+            logger.debug("Sent data - status_code: {} - text: {}".format(response.status_code, response.text))
             success = True
             break
          except (requests.exceptions.ConnectionError,
@@ -116,7 +117,7 @@ def on_mqtt_message(client, userdata, message):
 
 MOCK = False
 POLL_INTERVAL =  60 * 5
-LOG_LEVEL = logging.INFO
+LOG_LEVEL = logging.DEBUG
 
 MEASUREMENT_SENSOR = "sensors"
 MEASUREMENT_MQTT = "energy"
@@ -168,6 +169,7 @@ ser.flush()
 h2pwr_currents = []
 client.loop_start()
 last_timestamp = datetime.datetime.now() - datetime.timedelta(seconds=POLL_INTERVAL)
+logger.info(f"\n\n### Sensor service starting loop at: {datetime.datetime.strftime(datetime.datetime.now(),'%d-%m-%Y %H:%M:%S')} ###")
 while True:
     send = True
     if ser.in_waiting > 0:
