@@ -1,0 +1,15 @@
+[Unit]
+After=openvpn-client@loz1.service
+
+[Service]
+ExecStart=python3 /opt/fu_sensors/dfrobot/raspberrypi/poll_data.py
+WorkingDirectory=/opt/fu_sensors/dfrobot/raspberrypi
+Restart=always
+StandardOutput=append:/opt/fu_sensors/dfrobot/raspberrypi/poll.log
+StandardError=inherit
+SyslogIdentifier=rpi_sensors
+User=pi
+Group=pi
+
+[Install]
+WantedBy=multi-user.target
