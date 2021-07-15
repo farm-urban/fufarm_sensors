@@ -33,7 +33,7 @@ char pass[] = "1106FaRm1028";
 #define INFLUXDB_BUCKET "Loz_test"
 
 #define INFLUXDB_MEASUREMENT "LozExpt"
-#define INFLUXDB_STATION_ID "ardwifi1"
+#define INFLUXDB_STATION_ID "ard2"
 
 
 #ifdef MOCK

@@ -1,6 +1,6 @@
 FU_Fans 192.168.0.106
 FU_System_1 192.168.0.108
-FU_System_2 192.168.0.107
+FU_System_2 192.168.0.107 192.168.4.151
 
 https://tasmota.github.io/docs/MQTT/
 
