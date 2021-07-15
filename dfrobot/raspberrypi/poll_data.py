@@ -204,12 +204,12 @@ while True:
 
     if len(h2pwr_currents):
         current = sum(h2pwr_currents)/len(h2pwr_currents)
-        logger.debug(f"Processed {h2pwr_currents} to give {current}")
+        logger.debug(f"H2Pwr processed {h2pwr_currents} to give {current}")
         h2_measurement = "h2pwr"
         h2_tags = {'station_id': "rpi"}
         h2_fields = {'current': current}
         send_data_to_influx(influx_schema, h2_measurement, h2_tags, h2_fields, local_timestamp=True)
-        h2owr_currents = []
+        h2pwr_currents = []
 
     last_timestamp = datetime.datetime.now()
     time.sleep(POLL_INTERVAL)
