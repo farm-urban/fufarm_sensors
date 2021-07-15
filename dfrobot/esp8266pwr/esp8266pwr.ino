@@ -13,11 +13,14 @@
 #define MQTT_CLIENT_NAME "h2Pwr"
 #define MQTT_USER "mosquitto"
 #define MQTT_PASSWORD "mosquitto"
+#define MQTT_PUBLISH_CHANNEL "h2Pwr/STATUS"
+#define BAUD_SPEED 9600
+
 
 // Define Variables
 WiFiClient wifiClient;
 PubSubClient client(wifiClient);
-IPAddress mqttServer(192, 168, 1, 225);
+IPAddress mqttServer(192, 168, 0, 102);
 Adafruit_ADS1015 ads;     /* Use this for the 12-bit version */  
 int16_t adc0;
 float Current = 0;
@@ -46,12 +49,12 @@ void connectToWiFi()
   while ( WiFi.status() != WL_CONNECTED )
   {
     WiFi.disconnect(); // https://forum.arduino.cc/t/mqtt-with-esp32-gives-timeout-exceeded-disconnecting/688723/6
-    Serial.print("Connecting to ");
+    Serial.print("Wifi connecting to: ");
     Serial.println(SSID);
     WiFi.begin(SSID, WIFI_PASSWORD);
-    delay(4000);
+    delay(10000);
     i++;
-    if ( i == 3 )
+    if ( i == 5 )
     {
       Serial.print("*** Restarting ESP on failed WIFI connect ***");
       ESP.restart();
@@ -70,12 +73,6 @@ void reconnectMQTT() {
     Serial.print("Attempting MQTT connection...");
     if (client.connect(MQTT_CLIENT_NAME, MQTT_USER, MQTT_PASSWORD)) {
       Serial.println("MQTT connected");
-      ADC(); //get sensor data
-      if (Current < 0) Current = 0;
-      char charCurrent[] = "0.00" ; // convert Current float to string
-      dtostrf(Current, 6, 1, charCurrent);
-      // Once connected, publish an announcement...
-      client.publish("H2Pwr", charCurrent);
     } else {
         Serial.print("failed, rc=");
         Serial.print(client.state());
@@ -98,7 +95,7 @@ void reconnectMQTT() {
 
 void setup()
 {
-  Serial.begin(57600);
+  Serial.begin(BAUD_SPEED);
   connectToWiFi();
   client.setServer(mqttServer, 1883);
 //  client.setCallback(callback);
@@ -115,7 +112,6 @@ void setup()
   // ads1015.setGain(GAIN_SIXTEEN); // 16x gain  +/- 0.256V  1 bit = 0.125mV
   ads.setGain(GAIN_TWO);
   ads.begin();
-  float Current =0;
 } // END setup
 
 void loop()
@@ -127,5 +123,13 @@ void loop()
     reconnectMQTT();
   }
   client.loop();
+  ADC(); //get sensor data
+  if (Current < 0) Current = 0;
+  char charCurrent[] = "0.00" ; // convert Current float to string
+  dtostrf(Current, 6, 1, charCurrent);
+  // Once connected, publish an announcement...
+  Serial.print("Publishing on " MQTT_PUBLISH_CHANNEL ": ");
+  Serial.println(charCurrent);
+  client.publish(MQTT_PUBLISH_CHANNEL, charCurrent);
   delay(SAMPLE_WINDOW);
 } // END loop
