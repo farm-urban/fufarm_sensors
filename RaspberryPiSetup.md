@@ -337,15 +337,15 @@ Create a service to run the sensor script. Create file: ```/etc/systemd/system/f
 
 ```
 [Unit]
-After=openvpn-client@rpi2.service
+After=openvpn-client@loz1.service
 
 [Service]
-ExecStart=python3 /opt/fu_sensors/InfluxDB/rpi_sensors.py
-WorkingDirectory=/opt/fu_sensors/InfluxDB
+ExecStart=python3 /opt/fu_sensors/dfrobot/raspberrypi/poll_data.py
+WorkingDirectory=/opt/fu_sensors/dfrobot/raspberrypi
 Restart=always
-StandardOutput=syslog
-StandardError=syslog
-SyslogIdentifier=farm_sensors
+StandardOutput=append:/opt/fu_sensors/dfrobot/raspberrypi/poll.log
+StandardError=inherit
+SyslogIdentifier=loz_sensors
 User=pi
 Group=pi
 
