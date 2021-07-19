@@ -54,7 +54,7 @@ def send_data(schema, iline):
     url = "{}/api/v2/write".format(schema["endpoint"])
     params = {"org": schema["org"], "bucket": schema["bucket"]}
     headers = {"Authorization": "Token {}".format(schema["token"])}
-    logger.debug(
+    logger.info(
         "Sending url: {} params: {} headers: {} data: {}".format(
             url, params, headers, iline
         )
@@ -87,14 +87,18 @@ def on_mqtt_message(client, userdata, message):
     Received message on topic [tele/tasmota_5014E2/SENSOR]: {"Time":"1970-01-01T00:33:28","ENERGY":{"TotalStartTime":"2021-07-10T11:54:41","Total":0.003,"Yesterday":0.000,"Today":0.003,"Period":0,"Power":22,"ApparentPower":24,"ReactivePower":11,"Factor":0.90,"Voltage":246,"Current":0.098}}
 
     """
-    global h2pwr_currents
+    global h2_data
     decoded_message = str(message.payload.decode("utf-8"))
     logger.debug(f"Received message on topic [{message.topic}]: {decoded_message}")
 
     if message.topic == "h2Pwr/STATUS":
-       current = float(decoded_message)   
-       h2pwr_currents.append(current)
-       return
+        try:
+            data = json.loads(decoded_message)
+        except json.decoder.JSONDecodeError as e:
+            logger.warning(f"Error decoding MQTT data to JSON: {e.msg}\nMessage was: {e.doc}")
+            data = {'current': -1.0, 'voltage': -1.0}
+        h2_data.append(data)
+        return
 
     try:
         data = json.loads(decoded_message)
@@ -116,8 +120,8 @@ def on_mqtt_message(client, userdata, message):
 
 
 MOCK = False
-POLL_INTERVAL =  60 * 5
-LOG_LEVEL = logging.DEBUG
+POLL_INTERVAL = 60 * 5 
+LOG_LEVEL = logging.INFO
 
 MEASUREMENT_SENSOR = "sensors"
 MEASUREMENT_MQTT = "energy"
@@ -166,11 +170,29 @@ client.on_message = on_mqtt_message
 
 ser = serial.Serial(ARDUINO_TERMINAL, 9600, timeout=1)
 ser.flush()
-h2pwr_currents = []
+h2_data = []
+done_first_off = False
+first_off = datetime.datetime.strptime("19/07/2021 23:59", '%d/%m/%Y %H:%M')
+toggle = datetime.datetime.strptime("20/07/2021 06:00", '%d/%m/%Y %H:%M')
+onoff = (datetime.timedelta(hours=16), datetime.timedelta(hours=8))
+toggle_index = 0
 client.loop_start()
 last_timestamp = datetime.datetime.now() - datetime.timedelta(seconds=POLL_INTERVAL)
 logger.info(f"\n\n### Sensor service starting loop at: {datetime.datetime.strftime(datetime.datetime.now(),'%d-%m-%Y %H:%M:%S')} ###")
 while True:
+    # Light switching code
+#    print(first_off, datetime.datetime.now(), (first_off - datetime.datetime.now()).days)
+#    print(toggle, datetime.datetime.now(), (toggle - datetime.datetime.now()).days)
+    if not done_first_off and (first_off - datetime.datetime.now()).days < 0:
+        logger.info(f"Turning lights off for first time at: {datetime.datetime.now()}")
+        client.publish("cmnd/FU_System_2/Power", "0")
+        done_first_off = True
+    if (toggle - datetime.datetime.now()).days < 0:
+        client.publish("cmnd/FU_System_2/Power", "TOGGLE")
+        toggle += onoff[toggle_index]
+        logger.info(f"Turned lights {toggle_index} at: {datetime.datetime.now()} Next at {toggle}")
+        toggle_index = (toggle_index + 1) % 2 # toggle the toggle index
+
     send = True
     if ser.in_waiting > 0:
         line = ser.readline().decode("utf-8").rstrip()
@@ -202,14 +224,14 @@ while True:
                           'temp': d.temp}
                 send_data_to_influx(influx_schema, MEASUREMENT_BLUELAB, tags, fields, timestamp=d.timestamp)
 
-    if len(h2pwr_currents):
-        current = sum(h2pwr_currents)/len(h2pwr_currents)
-        logger.debug(f"H2Pwr processed {h2pwr_currents} to give {current}")
+    if len(h2_data):
+        current = sum([d['current'] for d in h2_data])/len(h2_data)
+        voltage = sum([d['voltage'] for d in h2_data])/len(h2_data)
         h2_measurement = "h2pwr"
         h2_tags = {'station_id': "rpi"}
-        h2_fields = {'current': current}
+        h2_fields = {'current': current, 'voltage': voltage}
         send_data_to_influx(influx_schema, h2_measurement, h2_tags, h2_fields, local_timestamp=True)
-        h2pwr_currents = []
+        h2_data = []
 
     last_timestamp = datetime.datetime.now()
     time.sleep(POLL_INTERVAL)
