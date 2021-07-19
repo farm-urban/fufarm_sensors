@@ -21,20 +21,28 @@
 WiFiClient wifiClient;
 PubSubClient client(wifiClient);
 IPAddress mqttServer(192, 168, 0, 102);
-Adafruit_ADS1015 ads;     /* Use this for the 12-bit version */  
+Adafruit_ADS1115 ads;     /* Use this for the 16-bit version */  
 int16_t adc0;
+int16_t adc1;
 float Current = 0;
+float Voltage = 0;
 
 // Define Functions
 void ADC()
 {
-    adc0 = ads.readADC_SingleEnded(0);
+    adc0 = ads.readADC_SingleEnded(0);  //adc0 is the current sensor
+    adc1 = ads.readADC_SingleEnded(1);  //adc1 is the voltage divider to get fuel cell voltage
     int average = 0;
+    int average1 = 0;
     for (int i=0; i < 1000; i++) {
       average = average + adc0;
+      average1 = average1 + adc1;
     }
-    average = average/1000;
-    Current = (average - 1659) * 0.0866;
+    average = average/1000; //smoothing the current readings
+    average1 = average1/1000; //smoothing the voltage readings
+//    Current = (average - 1659) * 0.0866; // The current sensor measures from -100 to 100A. the 1659 is the value measured for 0A. 0.086 is the mulitplier required to convert to current
+      Current = (average - 1659) * 0.0866; // The current sensor measures from -100 to 100A. the xxx is the value measured for 0A. 0.001 is the mulitplier required to convert to current
+    Voltage = average1 * (3.3/65535); //3.3 is the voltage range of the nodeMCU and 65535 as the ADC is 16 bit
 } // END ADC
 
 
@@ -124,12 +132,19 @@ void loop()
   }
   client.loop();
   ADC(); //get sensor data
+  // preparing Current data for MQTT
   if (Current < 0) Current = 0;
   char charCurrent[] = "0.00" ; // convert Current float to string
   dtostrf(Current, 6, 1, charCurrent);
+  //preparing Voltage data for MQTT
+  if (Voltage < 0) Voltage = 0;
+  char charVoltage[] = "0.00" ; // convert Voltage float to string
+  dtostrf(Voltage, 6, 1, charVoltage);
   // Once connected, publish an announcement...
   Serial.print("Publishing on " MQTT_PUBLISH_CHANNEL ": ");
-  Serial.println(charCurrent);
-  client.publish(MQTT_PUBLISH_CHANNEL, charCurrent);
+  Serial.println(charCurrent); //used for testing
+  Serial.println(charVoltage); //used for testing
+  client.publish(MQTT_PUBLISH_CHANNEL, charCurrent); //publishing the current reading over MQTT
+  //client.publish(MQTT_PUBLISH_CHANNEL, charVoltage); //publishing the voltage reading over MQTT
   delay(SAMPLE_WINDOW);
 } // END loop
