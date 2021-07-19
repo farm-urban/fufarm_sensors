@@ -143,6 +143,6 @@ void loop()
   mqttJson += "}";
   Serial.print("Publishing on " MQTT_PUBLISH_CHANNEL ": ");
   Serial.println(mqttJson); //used for debugging
-  client.publish(MQTT_PUBLISH_CHANNEL, mqttJson); 
+  client.publish(MQTT_PUBLISH_CHANNEL, mqttJson.c_str()); 
   delay(SAMPLE_WINDOW);
 } // END loop
