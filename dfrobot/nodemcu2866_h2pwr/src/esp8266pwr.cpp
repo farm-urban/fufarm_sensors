@@ -49,7 +49,7 @@ void ADC()
     adc0vout = avgCurrent * 0.00012476; //the voltage reading at adc0 (used for calibration with 12476micro volts per bit)
     Serial.print("adc0vout: ");
     Serial.println(adc0vout); 
-    current = adc0vout * 85.2 - 144.1; // (-1.66v due to sensor measuring negative values) converting microvolts to amps
+    current = adc0vout * 89.9 - 151.22  ;//1.48 is the current multiplier cheat // 
     Serial.print("Current: ");
     Serial.println(current);
     
