@@ -15,7 +15,8 @@
 #define MQTT_PASSWORD "mosquitto"
 #define MQTT_PUBLISH_CHANNEL "h2Pwr/STATUS"
 #define BAUD_SPEED 9600
-
+#define R1 9800 //for voltage divider
+#define R2 1180 //for voltage divider
 
 // Define Variables
 WiFiClient wifiClient;
@@ -26,6 +27,8 @@ int16_t adc0;
 int16_t adc1;
 float current = 0;
 float voltage = 0;
+float adc0vout = 0;
+float adc1vout = 0;
 String mqttJson = "";
 
 // Define Functions
@@ -33,17 +36,33 @@ void ADC()
 {
     adc0 = ads.readADC_SingleEnded(0);  //adc0 is the current sensor
     adc1 = ads.readADC_SingleEnded(1);  //adc1 is the voltage divider to get fuel cell voltage
-    int average = 0;
-    int average1 = 0;
+    int avgCurrent = 0;
+    int avgVoltage = 0;
     for (int i=0; i < 1000; i++) {
-      average = average + adc0;
-      average1 = average1 + adc1;
+      avgCurrent = avgCurrent + adc0;
+      avgVoltage = avgVoltage + adc1;
     }
-    average = average/1000; //smoothing the current readings
-    average1 = average1/1000; //smoothing the voltage readings
-//    Current = (average - 1659) * 0.0866; // The current sensor measures from -100 to 100A. the 1659 is the value measured for 0A. 0.086 is the mulitplier required to convert to current
-    current = (average - 1659) * 0.0866; // The current sensor measures from -100 to 100A. the xxx is the value measured for 0A. 0.001 is the mulitplier required to convert to current
-    voltage = average1 * (3.3/65535); //3.3 is the voltage range of the nodeMCU and 65535 as the ADC is 16 bit
+    avgCurrent = avgCurrent/1000;
+    avgVoltage = avgVoltage/1000;
+  //sorting out the current
+    Serial.println(avgCurrent);
+    adc0vout = avgCurrent * 0.00012476; //the voltage reading at adc0 (used for calibration with 12476micro volts per bit)
+    Serial.print("adc0vout: ");
+    Serial.println(adc0vout); 
+    current = adc0vout * 85.2 - 144.1; // (-1.66v due to sensor measuring negative values) converting microvolts to amps
+    Serial.print("Current: ");
+    Serial.println(current);
+    
+
+  //sorting out the Voltage
+  //  Serial.println(avgVoltage);
+    adc1vout = avgVoltage * 0.00012476; //the voltage reading at adc1 used for calibration with 12476micro volts per bit
+  //  Serial.print("adc1vout: ");
+  //  Serial.println(adc1vout); 
+    voltage = adc1vout / 0.1063; //0.1075 is r2/ (r1 + r2)
+    Serial.print("Voltage: ");
+    Serial.println(voltage);
+//    voltage = avgVoltage * 0.00848; //3.3 is the voltage range of the nodeMCU and 65535 as the ADC is 16 bit
 } // END ADC
 
 
@@ -119,7 +138,7 @@ void setup()
   // ads1015.setGain(GAIN_FOUR);    // 4x gain   +/- 1.024V  1 bit = 0.5mV
   // ads1015.setGain(GAIN_EIGHT);   // 8x gain   +/- 0.512V  1 bit = 0.25mV
   // ads1015.setGain(GAIN_SIXTEEN); // 16x gain  +/- 0.256V  1 bit = 0.125mV
-  ads.setGain(GAIN_TWO);
+  ads.setGain(GAIN_ONE);
   ads.begin();
 } // END setup
 
@@ -134,8 +153,8 @@ void loop()
   client.loop();
   ADC(); //get sensor data
   // prepare data for MQTT
-  if (current < 0) current = 0;
-  if (voltage < 0) voltage = 0;
+  if (current < 0.09) current = 0;
+  if (voltage < 0.09) voltage = 0;
   mqttJson = "{\"current\":";
   mqttJson += String(current, 2);
   mqttJson += ",\"voltage\":";
