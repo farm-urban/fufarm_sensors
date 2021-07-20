@@ -80,6 +80,26 @@ def send_data(schema, iline):
     return success
 
 
+def setup_mqtt(influx_schema, measurement, on_mqtt_message):
+    ## Setup MQTT
+    client = mqtt.Client()
+    #client.username_pw_set(username, password=None)
+    userdata = { 'influx_schema': influx_schema,
+                'measurement': measurement}
+    client.user_data_set(userdata)
+    #client.connect("192.168.4.1", port=1883)
+    client.connect("localhost", port=1883)
+
+    # Add different plugs
+    client.subscribe("tele/FU_Fans/SENSOR")
+    #client.subscribe("tele/FU_System_1/SENSOR")
+    client.subscribe("tele/FU_System_2/SENSOR")
+    client.subscribe("h2Pwr/STATUS")
+    #client.subscribe("tele/tasmota_5014E2/SENSOR")
+    client.on_message = on_mqtt_message
+    return
+
+
 def on_mqtt_message(client, userdata, message):
     """
     Process message of format:
@@ -119,8 +139,47 @@ def on_mqtt_message(client, userdata, message):
     send_data_to_influx(influx_schema, measurement, tags, fields, local_timestamp=LOCAL_TIMESTAMP)
 
 
+def is_past(trigger):
+    return bool((trigger - datetime.datetime.now()).days < 0)
+
+
+def create_schedule_times(schedule):
+    today = datetime.date.today()
+    _on_time = datetime.time(hour=int(schedule[0].split(":")[0]), minute=int(schedule[0].split(":")[1]))
+    on_time = datetime.datetime.combine(today,_on_time)
+    _off_time = (on_time + datetime.timedelta(hours=schedule[1])).time()
+    on_time = datetime.datetime.combine(today,_on_time)
+    off_time = datetime.datetime.combine(today,_off_time)
+    return manage_lights(on_time, off_time)
+
+
+def manage_lights(on_time, off_time):
+    if is_past(on_time) and is_past(off_time):
+        # off_time always after on_time, so if both in past, lights should be off and on_time needs
+        # to be pushed to tomorrow
+        on_time = on_time + datetime.timedelta(hours=24)
+        off_time = off_time + datetime.timedelta(hours=24)
+        logger.info(f"Turning lights off at: {datetime.datetime.now()} - next on at: {on_time}")
+        client.publish("cmnd/FU_System_2/Power", "0")
+    elif is_past(on_time):
+        # on_time past, off_time is in future - lights should be on and on_time pushed to tomorrow
+        on_time = on_time + datetime.timedelta(hours=24)
+        logger.info(f"Turning lights on at: {datetime.datetime.now()} - next off at: {off_time}")
+        client.publish("cmnd/FU_System_2/Power", "1")
+    elif is_past(off_time):
+        # off_time past, on_time is in future - lights should be off and off_time pushed to tomorrow
+        off_time = off_time + datetime.timedelta(hours=24)
+        logger.info(f"Turning lights off at: {datetime.datetime.now()} - next on at: {on_time}")
+        client.publish("cmnd/FU_System_2/Power", "0")
+    else:
+        # Both on_time and off_time in the future so nothing to do
+        pass
+    return on_time, off_time
+
+
 MOCK = False
 POLL_INTERVAL = 60 * 5 
+LIGHT_SCHEDULE = ("06:00",16)
 LOG_LEVEL = logging.INFO
 
 MEASUREMENT_SENSOR = "sensors"
@@ -128,7 +187,7 @@ MEASUREMENT_MQTT = "energy"
 MEASUREMENT_BLUELAB = "bluelab"
 SENSOR_STATION_ID = "rpi"
 MQTT_TO_STATIONID = { 'FU_System_2': 'Propagation'}
-HAVE_BLUELAB=False
+HAVE_BLUELAB = False
 BLUELAB_TAG_TO_STATIONID = { '52rf': 'sys1',
                              '4q3f': 'sys2'}
 LOCAL_TIMESTAMP = True
@@ -150,49 +209,17 @@ logging.basicConfig(
     level=LOG_LEVEL, format="%(asctime)s [loz_experiment]: %(message)s"
 )
 logger = logging.getLogger()
-
-## Setup MQTT
-client = mqtt.Client()
-#client.username_pw_set(username, password=None)
-userdata = { 'influx_schema': influx_schema,
-             'measurement': MEASUREMENT_MQTT}
-client.user_data_set(userdata)
-#client.connect("192.168.4.1", port=1883)
-client.connect("localhost", port=1883)
-
-# Add different plugs
-client.subscribe("tele/FU_Fans/SENSOR")
-#client.subscribe("tele/FU_System_1/SENSOR")
-client.subscribe("tele/FU_System_2/SENSOR")
-client.subscribe("h2Pwr/STATUS")
-#client.subscribe("tele/tasmota_5014E2/SENSOR")
-client.on_message = on_mqtt_message
-
+setup_mqtt(influx_schema, MEASUREMENT_MQTT, on_mqtt_message)
 ser = serial.Serial(ARDUINO_TERMINAL, 9600, timeout=1)
+
 ser.flush()
 h2_data = []
-done_first_off = False
-first_off = datetime.datetime.strptime("19/07/2021 23:59", '%d/%m/%Y %H:%M')
-toggle = datetime.datetime.strptime("20/07/2021 06:00", '%d/%m/%Y %H:%M')
-onoff = (datetime.timedelta(hours=16), datetime.timedelta(hours=8))
-toggle_index = 0
+on_time, off_time = create_schedule_times(LIGHT_SCHEDULE)
 client.loop_start()
 last_timestamp = datetime.datetime.now() - datetime.timedelta(seconds=POLL_INTERVAL)
 logger.info(f"\n\n### Sensor service starting loop at: {datetime.datetime.strftime(datetime.datetime.now(),'%d-%m-%Y %H:%M:%S')} ###")
 while True:
-    # Light switching code
-#    print(first_off, datetime.datetime.now(), (first_off - datetime.datetime.now()).days)
-#    print(toggle, datetime.datetime.now(), (toggle - datetime.datetime.now()).days)
-    if not done_first_off and (first_off - datetime.datetime.now()).days < 0:
-        logger.info(f"Turning lights off for first time at: {datetime.datetime.now()}")
-        client.publish("cmnd/FU_System_2/Power", "0")
-        done_first_off = True
-    if (toggle - datetime.datetime.now()).days < 0:
-        client.publish("cmnd/FU_System_2/Power", "TOGGLE")
-        toggle += onoff[toggle_index]
-        logger.info(f"Turned lights {toggle_index} at: {datetime.datetime.now()} Next at {toggle}")
-        toggle_index = (toggle_index + 1) % 2 # toggle the toggle index
-
+    on_time, off_time = manage_lights(on_time, off_time)
     send = True
     if ser.in_waiting > 0:
         line = ser.readline().decode("utf-8").rstrip()
