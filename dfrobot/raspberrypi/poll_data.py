@@ -97,7 +97,7 @@ def setup_mqtt(influx_schema, measurement, on_mqtt_message):
     client.subscribe("h2Pwr/STATUS")
     #client.subscribe("tele/tasmota_5014E2/SENSOR")
     client.on_message = on_mqtt_message
-    return
+    return client
 
 
 def on_mqtt_message(client, userdata, message):
@@ -150,27 +150,32 @@ def create_schedule_times(schedule):
     _off_time = (on_time + datetime.timedelta(hours=schedule[1])).time()
     on_time = datetime.datetime.combine(today,_on_time)
     off_time = datetime.datetime.combine(today,_off_time)
-    return manage_lights(on_time, off_time)
+    on_time, off_time = manage_lights(on_time, off_time)
+    logger.info(f"create_schedule_time: lights next set to go on at {on_time} and off at {off_time}")
+    return on_time, off_time
 
 
-def manage_lights(on_time, off_time):
+def manage_lights(on_time, off_time, mqtt_client=None):
     if is_past(on_time) and is_past(off_time):
         # off_time always after on_time, so if both in past, lights should be off and on_time needs
         # to be pushed to tomorrow
         on_time = on_time + datetime.timedelta(hours=24)
         off_time = off_time + datetime.timedelta(hours=24)
-        logger.info(f"Turning lights off at: {datetime.datetime.now()} - next on at: {on_time}")
-        client.publish("cmnd/FU_System_2/Power", "0")
+        if mqtt_client:
+            logger.info(f"Turning lights off at: {datetime.datetime.now()} - next on at: {on_time}")
+            mqtt_client.publish("cmnd/FU_System_2/Power", "0")
     elif is_past(on_time):
         # on_time past, off_time is in future - lights should be on and on_time pushed to tomorrow
         on_time = on_time + datetime.timedelta(hours=24)
-        logger.info(f"Turning lights on at: {datetime.datetime.now()} - next off at: {off_time}")
-        client.publish("cmnd/FU_System_2/Power", "1")
+        if mqtt_client:
+            logger.info(f"Turning lights on at: {datetime.datetime.now()} - next off at: {off_time}")
+            mqtt_client.publish("cmnd/FU_System_2/Power", "1")
     elif is_past(off_time):
         # off_time past, on_time is in future - lights should be off and off_time pushed to tomorrow
         off_time = off_time + datetime.timedelta(hours=24)
-        logger.info(f"Turning lights off at: {datetime.datetime.now()} - next on at: {on_time}")
-        client.publish("cmnd/FU_System_2/Power", "0")
+        if mqtt_client:
+            logger.info(f"Turning lights off at: {datetime.datetime.now()} - next on at: {on_time}")
+            mqtt_client.publish("cmnd/FU_System_2/Power", "0")
     else:
         # Both on_time and off_time in the future so nothing to do
         pass
@@ -209,17 +214,17 @@ logging.basicConfig(
     level=LOG_LEVEL, format="%(asctime)s [loz_experiment]: %(message)s"
 )
 logger = logging.getLogger()
-setup_mqtt(influx_schema, MEASUREMENT_MQTT, on_mqtt_message)
+mqtt_client = setup_mqtt(influx_schema, MEASUREMENT_MQTT, on_mqtt_message)
 ser = serial.Serial(ARDUINO_TERMINAL, 9600, timeout=1)
 
 ser.flush()
 h2_data = []
 on_time, off_time = create_schedule_times(LIGHT_SCHEDULE)
-client.loop_start()
+mqtt_client.loop_start()
 last_timestamp = datetime.datetime.now() - datetime.timedelta(seconds=POLL_INTERVAL)
 logger.info(f"\n\n### Sensor service starting loop at: {datetime.datetime.strftime(datetime.datetime.now(),'%d-%m-%Y %H:%M:%S')} ###")
 while True:
-    on_time, off_time = manage_lights(on_time, off_time)
+    on_time, off_time = manage_lights(on_time, off_time, mqtt_client)
     send = True
     if ser.in_waiting > 0:
         line = ser.readline().decode("utf-8").rstrip()
