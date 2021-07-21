@@ -36,14 +36,14 @@ void ADC()
 {
     adc0 = ads.readADC_SingleEnded(0);  //adc0 is the current sensor
     adc1 = ads.readADC_SingleEnded(1);  //adc1 is the voltage divider to get fuel cell voltage
-    int avgCurrent = 0;
-    int avgVoltage = 0;
+    float avgCurrent = 0.0;
+    float avgVoltage = 0.0;
     for (int i=0; i < 1000; i++) {
       avgCurrent = avgCurrent + adc0;
       avgVoltage = avgVoltage + adc1;
     }
-    avgCurrent = avgCurrent/1000;
-    avgVoltage = avgVoltage/1000;
+    avgCurrent = avgCurrent/1000.0;
+    avgVoltage = avgVoltage/1000.0;
   //sorting out the current
     Serial.println(avgCurrent);
     adc0vout = avgCurrent * 0.00012476; //the voltage reading at adc0 (used for calibration with 12476micro volts per bit)
@@ -53,7 +53,6 @@ void ADC()
     Serial.print("Current: ");
     Serial.println(current);
     
-
   //sorting out the Voltage
   //  Serial.println(avgVoltage);
     adc1vout = avgVoltage * 0.00012476; //the voltage reading at adc1 used for calibration with 12476micro volts per bit
