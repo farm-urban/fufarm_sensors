@@ -109,7 +109,8 @@ def on_mqtt_message(client, userdata, message):
     """
     global h2_data
     decoded_message = str(message.payload.decode("utf-8"))
-    logger.debug(f"Received message on topic [{message.topic}]: {decoded_message}")
+    if True or message.topic != "h2Pwr/STATUS":
+        logger.debug(f"Received message on topic [{message.topic}]: {decoded_message}")
 
     if message.topic == "h2Pwr/STATUS":
         try:
@@ -184,8 +185,12 @@ def manage_lights(on_time, off_time, mqtt_client=None):
 
 MOCK = False
 POLL_INTERVAL = 60 * 5 
+#MOCK = True
+#POLL_INTERVAL = 5 
 LIGHT_SCHEDULE = ("06:00",16)
-LOG_LEVEL = logging.INFO
+LOCAL_SENSORS = False
+CONTROL_LIGHTS = False
+LOG_LEVEL = logging.DEBUG
 
 MEASUREMENT_SENSOR = "sensors"
 MEASUREMENT_MQTT = "energy"
@@ -215,18 +220,24 @@ logging.basicConfig(
 )
 logger = logging.getLogger()
 mqtt_client = setup_mqtt(influx_schema, MEASUREMENT_MQTT, on_mqtt_message)
-ser = serial.Serial(ARDUINO_TERMINAL, 9600, timeout=1)
+if LOCAL_SENSORS:
+    ser = serial.Serial(ARDUINO_TERMINAL, 9600, timeout=1)
+    ser.flush()
 
-ser.flush()
 h2_data = []
-on_time, off_time = create_schedule_times(LIGHT_SCHEDULE)
+if CONTROL_LIGHTS:
+    on_time, off_time = create_schedule_times(LIGHT_SCHEDULE)
 mqtt_client.loop_start()
 last_timestamp = datetime.datetime.now() - datetime.timedelta(seconds=POLL_INTERVAL)
 logger.info(f"\n\n### Sensor service starting loop at: {datetime.datetime.strftime(datetime.datetime.now(),'%d-%m-%Y %H:%M:%S')} ###")
 while True:
-    on_time, off_time = manage_lights(on_time, off_time, mqtt_client)
+    if not mqtt_client.is_connected():
+        logger.info("mqtt_client reconnecting")
+        mqtt_client.reconnect()
+    if CONTROL_LIGHTS:
+        on_time, off_time = manage_lights(on_time, off_time, mqtt_client)
     send = True
-    if ser.in_waiting > 0:
+    if LOCAL_SENSORS and ser.in_waiting > 0:
         line = ser.readline().decode("utf-8").rstrip()
         send = True
         try:
