@@ -91,11 +91,8 @@ def setup_mqtt(influx_schema, measurement, on_mqtt_message):
     client.connect("localhost", port=1883)
 
     # Add different plugs
-    client.subscribe("tele/FU_Fans/SENSOR")
-    #client.subscribe("tele/FU_System_1/SENSOR")
-    client.subscribe("tele/FU_System_2/SENSOR")
-    client.subscribe("h2Pwr/STATUS")
-    #client.subscribe("tele/tasmota_5014E2/SENSOR")
+    for topic in MQTT_SUBSCRIBE_TOPICS:
+        client.subscribe(topic)
     client.on_message = on_mqtt_message
     return client
 
@@ -131,7 +128,7 @@ def on_mqtt_message(client, userdata, message):
     measurement = userdata["measurement"]
 
     station_id = message.topic.split("/")[1]
-    if station_id in MQTT_TO_STATIONID.keys():
+    if MQTT_TO_STATIONID in globals() and station_id in MQTT_TO_STATIONID.keys():
         station_id = MQTT_TO_STATIONID[station_id]
     tags = {'station_id' : station_id}
 
@@ -196,8 +193,13 @@ MEASUREMENT_SENSOR = "sensors"
 MEASUREMENT_MQTT = "energy"
 MEASUREMENT_BLUELAB = "bluelab"
 SENSOR_STATION_ID = "rpi"
-MQTT_TO_STATIONID = { 'FU_System_2': 'Propagation'}
-HAVE_BLUELAB = False
+#MQTT_TO_STATIONID = { 'FU_System_2': 'Propagation'}
+MQTT_TO_STATIONID = {}
+MQTT_SUBSCRIBE_TOPICS = [ "tele/FU_Fans/SENSOR",
+                          "tele/FU_System_1/SENSOR",
+                          "tele/FU_System_2/SENSOR",
+                          "h2Pwr/STATUS" ]
+HAVE_BLUELAB = True
 BLUELAB_TAG_TO_STATIONID = { '52rf': 'sys1',
                              '4q3f': 'sys2'}
 LOCAL_TIMESTAMP = True
@@ -231,9 +233,10 @@ mqtt_client.loop_start()
 last_timestamp = datetime.datetime.now() - datetime.timedelta(seconds=POLL_INTERVAL)
 logger.info(f"\n\n### Sensor service starting loop at: {datetime.datetime.strftime(datetime.datetime.now(),'%d-%m-%Y %H:%M:%S')} ###")
 while True:
-    if not mqtt_client.is_connected():
-        logger.info("mqtt_client reconnecting")
-        mqtt_client.reconnect()
+    # Below seems to raise an exception - not sure why
+    #if not mqtt_client.is_connected():
+    #    logger.info("mqtt_client reconnecting")
+    #    mqtt_client.reconnect()
     if CONTROL_LIGHTS:
         on_time, off_time = manage_lights(on_time, off_time, mqtt_client)
     send = True
