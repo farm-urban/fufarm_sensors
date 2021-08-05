@@ -6,7 +6,7 @@ import datetime
 import os
 from pathlib import Path
 import sys
-from typing import Union
+from typing import Union, Optional
 import warnings
 
 LOGDIR = '/home/pi/.local/share/Bluelab/Connect/logs'
@@ -44,6 +44,11 @@ Time (Europe/London),Conductivity unit,Temperature unit,52rf Conductivity,52rf p
         reader = csv.reader(f)
         for i, row in enumerate(reader):
             if i == 0:
+                ncol = len(row)
+                # ncol 6 is monitor 1
+                # ncol 9 is monitor 2 and control 1
+                # ncol 15 is control 2
+                print("NROWS IS ",len(row))
                 tag1 = row[3].split()[0]
                 systems.append(tag1)
                 if len(row) == 6:
@@ -99,9 +104,10 @@ Time (Europe/London),Conductivity unit,Temperature unit,52rf Conductivity,52rf p
                 data.append([d1, d2])
     return data
 
-def sample_bluelab_data(last_timestamp: datetime.datetime, poll_interval: int):
+def sample_bluelab_data(last_timestamp: datetime.datetime, poll_interval: int, last_log: Optional[str]=None):
     BUFFER = 30
-    last_log = get_last_log(LOGDIR)
+    if last_log is None:
+        last_log = get_last_log(LOGDIR)
     data = get_data(last_log)
     values = []
     end = None
@@ -149,8 +155,24 @@ def sample_bluelab_data(last_timestamp: datetime.datetime, poll_interval: int):
 
 
 if __name__ == "__main__":
-    poll_interval = 50000 * 60
-    last_timestamp = datetime.datetime.now() - datetime.timedelta(seconds=poll_interval)
-    print(sample_bluelab_data(last_timestamp, poll_interval))
+    #poll_interval = 50000 * 60
+    #last_timestamp = datetime.datetime.now() - datetime.timedelta(seconds=poll_interval)
+    #print(sample_bluelab_data(last_timestamp, poll_interval))
 
+#    poll_interval = 1
+#    target_timestamp = datetime.datetime(2021, 7, 6, 11, 38)
+#    last_timestamp = target_timestamp - datetime.timedelta(seconds=poll_interval)
+#    last_log = "bluelab_logs/monitor_one.csv"
+#    x = sample_bluelab_data(last_timestamp, poll_interval, last_log=last_log)
+#    assert x[0].timestamp == target_timestamp
+
+
+    poll_interval = 1
+    target_timestamp = datetime.datetime(2021, 7, 6, 11, 38)
+    last_timestamp = target_timestamp - datetime.timedelta(seconds=poll_interval)
+    last_log = "bluelab_logs/control_two.csv"
+    last_log = "bluelab_logs/monitor_two.csv"
+    last_log = "bluelab_logs/control_one.csv"
+    x = sample_bluelab_data(last_timestamp, poll_interval, last_log=last_log)
+    assert x[0].timestamp == target_timestamp
 
