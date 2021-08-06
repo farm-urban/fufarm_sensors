@@ -10,8 +10,11 @@
 //#define MOCK;
 //char ssid[] = "HAL8000";
 //char pass[] = "ziLEUTWLj4x"; 
+//char ssid[] = "Farm Urban";
+//char pass[] = "v8fD53Rs";
 char ssid[] = "Vertical Farm Pilot";
 char pass[] = "1106FaRm1028";
+
 
 // Will be different depending on the reference voltage
 # define VOLTAGE_CONVERSION 5000;
@@ -26,14 +29,14 @@ char pass[] = "1106FaRm1028";
 // InfluxDB v2 server url, e.g. https://eu-central-1-1.aws.cloud2.influxdata.com (Use: InfluxDB UI -> Load Data -> Client Libraries)
 #define INFLUXDB_SERVER "westeurope-1.azure.cloud2.influxdata.com"
 // InfluxDB v2 server or cloud API authentication token (Use: InfluxDB UI -> Data -> Tokens -> <select token>)
-#define INFLUXDB_TOKEN "SibMj38WbdjAWgrjZMRF2aBCeiE3vK44drLuG-Ioee9C-cTPJydc9KoBFu1-A9vEa4vAzwjX-WjKBulAOrkcXA=="
+#define INFLUXDB_TOKEN "EZEPNrX59lKNzhqtCPbbnDwUX605dZAo4ai-33FvO2MrR3TpM5e0eH08j2rwqbA7XT96ea_ssMwRi1hq01WEZA=="
 // InfluxDB v2 organization id (Use: InfluxDB UI -> User -> About -> Common Ids )
 #define INFLUXDB_ORG "accounts@farmurban.co.uk"
 // InfluxDB v2 bucket name (Use: InfluxDB UI ->  Data -> Buckets)
-#define INFLUXDB_BUCKET "Loz_test"
+#define INFLUXDB_BUCKET "Heath"
 
-#define INFLUXDB_MEASUREMENT "LozExpt"
-#define INFLUXDB_STATION_ID "ard2"
+#define INFLUXDB_MEASUREMENT "sensors"
+#define INFLUXDB_STATION_ID "sys2"
 
 
 #ifdef MOCK
@@ -64,7 +67,7 @@ volatile int pulseCount; // Flow Sensor
 
 // Wifi control
 int wifiStatus = WL_IDLE_STATUS;     // the Wifi radio's status
-WiFiClient client;
+WiFiClient wifiClient;
 
 int getCO2(int analogPin){
     // Calculate CO2 concentration in ppm
@@ -166,6 +169,23 @@ void flowPulse()
   pulseCount += 1;
 }
 
+void connectToWifi() {
+    // attempt to connect to Wifi network:
+  wifiStatus = WL_IDLE_STATUS;
+  while (wifiStatus != WL_CONNECTED) {
+    Serial.print("Attempting to connect to WPA SSID: ");
+    Serial.println(ssid);
+    // Connect to WPA/WPA2 network:
+    wifiStatus = WiFi.begin(ssid, pass);
+    // wait 10 seconds for connection:
+    delay(10000);
+  }
+  // you're connected now, so print out the data:
+  Serial.print("You're connected to the network");
+  printCurrentNet();
+  printWifiData();
+}
+
 void printWifiData() {
   // print your board's IP address:
   IPAddress ip = WiFi.localIP();
@@ -218,29 +238,29 @@ int sendData(String data){
     influxdb_post_url += urlEncode(INFLUXDB_BUCKET);
 
      // if you get a connection, report back via serial:
-    if (client.connectSSL(INFLUXDB_SERVER, 443)) {
+    if (wifiClient.connectSSL(INFLUXDB_SERVER, 443)) {
       Serial.println("connected");
-      client.println("POST " + influxdb_post_url + " HTTP/1.1");
-      client.println("Host: " + String(INFLUXDB_SERVER));
-      client.println("Content-Type: text/plain");
-      client.println("Authorization: Token " + String(INFLUXDB_TOKEN));
-      client.println("Connection: close");
-      client.print("Content-Length: ");
-      client.println(data.length());
-      client.println(); // end HTTP header
-      client.print(data);  // send HTTP body
+      wifiClient.println("POST " + influxdb_post_url + " HTTP/1.1");
+      wifiClient.println("Host: " + String(INFLUXDB_SERVER));
+      wifiClient.println("Content-Type: text/plain");
+      wifiClient.println("Authorization: Token " + String(INFLUXDB_TOKEN));
+      wifiClient.println("Connection: close");
+      wifiClient.print("Content-Length: ");
+      wifiClient.println(data.length());
+      wifiClient.println(); // end HTTP header
+      wifiClient.print(data);  // send HTTP body
 
 // Debug return values
-//      while(client.connected()) {
-//        if(client.available()){
+//      while(wifiClient.connected()) {
+//        if(wifiClient.available()){
 //          // read an incoming byte from the server and print it to serial monitor:
-//          char c = client.read();
+//          char c = wifiClient.read();
 //          Serial.print(c);
 //        }
 //      }
 
-      if (client.connected()) {
-        client.stop();
+      if (wifiClient.connected()) {
+        wifiClient.stop();
       }
       Serial.println("disconnected");
       return 0;
@@ -332,21 +352,7 @@ void setup() {
   if (fv < WIFI_FIRMWARE_LATEST_VERSION) {
     Serial.println("Please upgrade the firmware");
   }
- 
-  // attempt to connect to Wifi network:
-  while (wifiStatus != WL_CONNECTED) {
-    Serial.print("Attempting to connect to WPA SSID: ");
-    Serial.println(ssid);
-    // Connect to WPA/WPA2 network:
-    wifiStatus = WiFi.begin(ssid, pass);
-    // wait 10 seconds for connection:
-    delay(10000);
-  }
-  // you're connected now, so print out the data:
-  Serial.print("You're connected to the network");
-  printCurrentNet();
-  printWifiData();
-  
+  connectToWifi();
  #endif //MOCK
 } // end setup
 
@@ -354,6 +360,9 @@ void setup() {
 void loop() {
     //Serial.println("Starting main loop");
     //digitalWrite(LED_BUILTIN, HIGH);
+    if (WiFi.status() != WL_CONNECTED) {
+      connectToWifi();
+    }
     TempAndHumidity th = dht.getTempAndHumidity();
     float tempair = th.temperature;
     float humidity = th.humidity;
