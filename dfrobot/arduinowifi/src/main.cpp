@@ -7,7 +7,7 @@
 #include "DFRobot_EC.h"
 #include "DFRobot_PH.h"
 
-//#define MOCK;
+// #define MOCK;
 //char ssid[] = "HAL8000";
 //char pass[] = "ziLEUTWLj4x";
 // char ssid[] = "Farm Urban";
@@ -47,16 +47,24 @@ char pass[] = "1106FaRm1028";
 #endif
 
 // Analog Inputs
+#define HAVE_LIGHT
 int lightPin = A0;
+#define HAVE_CO2
 int co2Pin = A1;
+// #define HAVE_EC
 int ecPin = A2;
+// #define HAVE_PH
 int phPin = A3;
 
 
 // Digital Inputs
+#define HAVE_TEMP_HUMIDITY
 int dhtPin = 2; // Temp and Humidity
+#define HAVE_TEMP_WET
 int DS18S20_Pin = 3; // Wet temperature
+#define HAVE_FLOW
 int SEN0217_Pin = 4; // Flow sensor
+
 
 // Data collecting structures
 DHTesp dht; // Temperature and Humidity
@@ -210,7 +218,6 @@ void printWifiData() {
   IPAddress ip = WiFi.localIP();
   Serial.print("IP Address: ");
   Serial.println(ip);
-  Serial.println(ip);
   // print your MAC address:
   byte mac[6];
   WiFi.macAddress(mac);
@@ -220,20 +227,20 @@ void printWifiData() {
 
 
 void connectToWifi() {
-    // attempt to connect to Wifi network:
+#ifdef MOCK
+    Serial.println("Skipping Wifi Connect");
+#else
   wifiStatus = WL_IDLE_STATUS;
   while (wifiStatus != WL_CONNECTED) {
     Serial.print("Attempting to connect to WPA SSID: ");
     Serial.println(ssid);
-    // Connect to WPA/WPA2 network:
     wifiStatus = WiFi.begin(ssid, pass);
-    // wait 10 seconds for connection:
     delay(10000);
   }
-  // you're connected now, so print out the data:
   Serial.print("You're connected to the network");
   printCurrentNet();
   printWifiData();
+#endif
 }
 
 
@@ -310,28 +317,42 @@ int sendData(String data){
 }
 
 
-String createLineProtocol(float tempair, float tempwet, float humidity, int co2, float ec, float ph, float flow, int light) {
+String createLineProtocol(int light, float tempair, float humidity, float flow, int co2, float tempwet, float ec, float ph) {
   String lineProtocol = INFLUXDB_MEASUREMENT;
   // Tags
   lineProtocol += ",station_id=";
   lineProtocol += INFLUXDB_STATION_ID;
   // Fields
+#ifdef HAVE_LIGHT
+  lineProtocol += ",light=";
+#endif
+  lineProtocol += light;
+#ifdef HAVE_TEMP_HUMIDITY
   lineProtocol += " tempair=";
   lineProtocol += String(tempair, 2);
-  lineProtocol += ",tempwet=";
-  lineProtocol += String(tempwet, 2);
   lineProtocol += ",humidity=";
   lineProtocol += String(humidity, 2);
-  lineProtocol += ",co2=";
-  lineProtocol += co2;
-  lineProtocol += ",cond=";
-  lineProtocol += String(ec, 2);
-  lineProtocol += ",ph=";
-  lineProtocol += String(ph, 2);
+#endif
+#ifdef HAVE_FLOW
   lineProtocol += ",flow=";
   lineProtocol += String(flow, 1);
-  lineProtocol += ",light=";
-  lineProtocol += light;
+#endif
+#ifdef HAVE_CO2
+  lineProtocol += ",co2=";
+  lineProtocol += co2;
+#endif
+#ifdef HAVE_TEMP_WET
+  lineProtocol += ",tempwet=";
+  lineProtocol += String(tempwet, 2);
+#endif
+#ifdef HAVE_EC
+  lineProtocol += ",cond=";
+  lineProtocol += String(ec, 2);
+#endif
+#ifdef HAVE_PH
+  lineProtocol += ",ph=";
+  lineProtocol += String(ph, 2);
+#endif
   return lineProtocol;
 }
 
@@ -350,9 +371,7 @@ void setup() {
     ecProbe.begin();
     phProbe.begin();
  
-#ifdef MOCK
-  Serial.println("Skipping Wifi setup");
-#else
+#ifndef MOCK
    // check for the WiFi module:
   if (WiFi.status() == WL_NO_MODULE) {
     Serial.println("Communication with WiFi module failed!");
@@ -364,31 +383,30 @@ void setup() {
     Serial.println("Please upgrade the firmware");
   }
   connectToWifi();
- #endif //MOCK
+#endif //MOCK
 } // end setup
 
 
 void loop() {
     //Serial.println("Starting main loop");
     //digitalWrite(LED_BUILTIN, HIGH);
+#ifndef MOCK
     if (WiFi.status() != WL_CONNECTED) {
       connectToWifi();
     }
+#endif
+    int light = getLight(lightPin);
     TempAndHumidity th = dht.getTempAndHumidity();
     float tempair = th.temperature;
     float humidity = th.humidity;
+    float flow = getFlow();
     int co2 = getCO2(co2Pin);
     float tempwet = getTempWet();
     float ec = getEC(ecPin, tempwet);
     float ph = getPH(phPin, tempwet);
-    float flow = getFlow();
-    int light = getLight(lightPin);
-
-    String lineProtocol = createLineProtocol(tempair, tempwet, humidity, co2, ec, ph, flow, light);
+    String lineProtocol = createLineProtocol(light, tempair, humidity, flow, co2, tempwet, ec, ph);
     Serial.println(lineProtocol);
-#ifdef MOCK
-    Serial.println("Not sending data");
-#else
+#ifndef MOCK
     int ret = sendData(lineProtocol);
 #endif //endif Mock
  
