@@ -323,11 +323,11 @@ String createLineProtocol(int light, float tempair, float humidity, float flow, 
   lineProtocol += INFLUXDB_STATION_ID;
   // Fields
 #ifdef HAVE_LIGHT
-  lineProtocol += ",light=";
-#endif
+  lineProtocol += " light="; // space first to separate fields
   lineProtocol += light;
+#endif
 #ifdef HAVE_TEMP_HUMIDITY
-  lineProtocol += " tempair=";
+  lineProtocol += ",tempair=";
   lineProtocol += String(tempair, 2);
   lineProtocol += ",humidity=";
   lineProtocol += String(humidity, 2);
