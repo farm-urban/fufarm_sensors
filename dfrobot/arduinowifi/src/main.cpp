@@ -36,7 +36,7 @@ char pass[] = "1106FaRm1028";
 #define INFLUXDB_BUCKET "Heath"
 
 #define INFLUXDB_MEASUREMENT "sensors"
-#define INFLUXDB_STATION_ID "sys2"
+#define INFLUXDB_STATION_ID "sys1"
 
 
 #ifdef MOCK
@@ -60,7 +60,7 @@ int phPin = A3;
 // Digital Inputs
 #define HAVE_TEMP_HUMIDITY
 int dhtPin = 2; // Temp and Humidity
-#define HAVE_TEMP_WET
+// #define HAVE_TEMP_WET
 int DS18S20_Pin = 3; // Wet temperature
 #define HAVE_FLOW
 int SEN0217_Pin = 4; // Flow sensor
@@ -294,16 +294,15 @@ int sendData(String data){
       wifiClient.println(); // end HTTP header
       wifiClient.print(data);  // send HTTP body
 
-// Debug return values
-    //  Serial.println("<Http Response>");
-    //  while(wifiClient.connected()) {
-    //    if(wifiClient.available()){
-    //      // read an incoming byte from the server and print it to serial monitor:
-    //      char c = wifiClient.read();
-    //      Serial.print(c);
-    //    }
-    //  }
-    //  Serial.println("</Http Response>");
+     // Debug return values
+     delay(2000); // Need to wait for response to come back - not sure of optimal time
+     Serial.println("<Http Response>");
+     while(wifiClient.available()) {
+        // read an incoming byte from the server and print it to serial monitor:
+        char c = wifiClient.read();
+        Serial.print(c);
+    }
+     Serial.println("</Http Response>");
 
       if (wifiClient.connected()) {
         wifiClient.stop();
