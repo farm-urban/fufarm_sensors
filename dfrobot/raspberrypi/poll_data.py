@@ -184,31 +184,23 @@ MOCK = False
 POLL_INTERVAL = 60 * 5 
 #MOCK = True
 #POLL_INTERVAL = 5 
-LIGHT_SCHEDULE = ("06:00",16)
+HAVE_BLUELAB = False
+HAVE_MQTT = False
 LOCAL_SENSORS = True
 CONTROL_LIGHTS = False
-LOG_LEVEL = logging.DEBUG
-
-MEASUREMENT_SENSOR = "sensors"
-MEASUREMENT_MQTT = "energy"
-MEASUREMENT_BLUELAB = "bluelab"
-SENSOR_STATION_ID = "rpi"
-#MQTT_TO_STATIONID = { 'FU_System_2': 'Propagation'}
-MQTT_TO_STATIONID = {}
-MQTT_SUBSCRIBE_TOPICS = [ "tele/FU_Fans/SENSOR",
-                          "tele/FU_System_1/SENSOR",
-                          "tele/FU_System_2/SENSOR",
-                          "h2Pwr/STATUS" ]
-HAVE_BLUELAB = True
-BLUELAB_TAG_TO_STATIONID = { '52rf': 'sys1',
-                             '4q3f': 'sys2'}
 LOCAL_TIMESTAMP = True
 ARDUINO_TERMINAL = "/dev/ttyACM0"
+LOG_LEVEL = logging.DEBUG
 
-BUCKET = "Heath"
+
+# Influxdb Configuration
+SENSOR_STATION_ID = "rpi"
+MEASUREMENT_SENSOR = "sensors"
+BUCKET = "cryptfarm"
+#TOKEN = pGHNPOqH8TmwJpU6vko7us8fmTAXltGP_X4yKONTI6l9N-c2tWsscFtCab43qUJo5EcQE3696U9de5gn9NN4Bw==
 TOKEN = open('TOKEN').readline().strip()
-ORG = "accounts@farmurban.co.uk"
-INFLUX_URL = "https://westeurope-1.azure.cloud2.influxdata.com"
+ORG = "farmurban"
+INFLUX_URL = "http:/10.8.0.1:8086"
 influx_schema = {
     "endpoint": INFLUX_URL,
     "org": ORG, "token": TOKEN,
@@ -216,12 +208,27 @@ influx_schema = {
 }
 sensor_influx_tags = {'station_id': SENSOR_STATION_ID}
 
+# MQTT Data
+MEASUREMENT_MQTT = "energy"
+MEASUREMENT_BLUELAB = "bluelab"
+#MQTT_TO_STATIONID = { 'FU_System_2': 'Propagation'}
+MQTT_TO_STATIONID = {}
+MQTT_SUBSCRIBE_TOPICS = [ "tele/FU_Fans/SENSOR",
+                          "tele/FU_System_1/SENSOR",
+                          "tele/FU_System_2/SENSOR",
+                          "h2Pwr/STATUS" ]
+BLUELAB_TAG_TO_STATIONID = { '52rf': 'sys1',
+                             '4q3f': 'sys2'}
+LIGHT_SCHEDULE = ("06:00",16)
+
+
 # Logging
 logging.basicConfig(
     level=LOG_LEVEL, format="%(asctime)s [loz_experiment]: %(message)s"
 )
 logger = logging.getLogger()
-mqtt_client = setup_mqtt(influx_schema, MEASUREMENT_MQTT, on_mqtt_message)
+if HAVE_MQTT:
+    mqtt_client = setup_mqtt(influx_schema, MEASUREMENT_MQTT, on_mqtt_message)
 if LOCAL_SENSORS:
     ser = serial.Serial(ARDUINO_TERMINAL, 9600, timeout=1)
     ser.flush()
@@ -229,7 +236,8 @@ if LOCAL_SENSORS:
 h2_data = []
 if CONTROL_LIGHTS:
     on_time, off_time = create_schedule_times(LIGHT_SCHEDULE)
-mqtt_client.loop_start()
+if HAVE_MQTT:
+    mqtt_client.loop_start()
 last_timestamp = datetime.datetime.now() - datetime.timedelta(seconds=POLL_INTERVAL)
 logger.info(f"\n\n### Sensor service starting loop at: {datetime.datetime.strftime(datetime.datetime.now(),'%d-%m-%Y %H:%M:%S')} ###\n\n")
 while True:
