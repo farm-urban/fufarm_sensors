@@ -17,8 +17,9 @@ import time
 import paho.mqtt.client as mqtt
 
 # For Local Pins
+from gpiozero import DigitalInputDevice
 from gpiozero import DistanceSensor
-from gpiozero.pins.pigpio import PiGPIOFa
+from gpiozero.pins.pigpio import PiGPIOFactory
 
 # Local imports
 import bluelab_logs
@@ -258,7 +259,7 @@ LIGHT_SCHEDULE = ("06:00",16)
 
 # Logging
 logging.basicConfig(
-    level=LOG_LEVEL, format="%(asctime)s [loz_experiment]: %(message)s"
+    level=LOG_LEVEL, format="%(asctime)s [rpi2]: %(message)s"
 )
 logger = logging.getLogger()
 if HAVE_MQTT:
