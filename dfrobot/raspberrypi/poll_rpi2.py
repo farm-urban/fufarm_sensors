@@ -16,6 +16,10 @@ import serial
 import time
 import paho.mqtt.client as mqtt
 
+# For Local Pins
+from gpiozero import DistanceSensor
+from gpiozero.pins.pigpio import PiGPIOFa
+
 # Local imports
 import bluelab_logs
 
@@ -179,6 +183,22 @@ def manage_lights(on_time, off_time, mqtt_client=None):
         pass
     return on_time, off_time
 
+def count_paddle():
+    global pulse_count
+    pulse_count += 1
+    # print("button was pressed")
+
+
+def flow_rate(sample_window):
+    """From YF-S201 manual:
+    Pluse Characteristic:F=7Q(L/MIN).
+    2L/MIN=16HZ 4L/MIN=32.5HZ 6L/MIN=49.3HZ 8L/MIN=65.5HZ 10L/MIN=82HZ
+
+    sample_window is in seconds, so hz is pulse_count / sample_window
+    """
+    hertz = pulse_count / sample_window
+    return hertz / 7.0
+
 
 MOCK = False
 POLL_INTERVAL = 60 * 5 
@@ -187,6 +207,7 @@ POLL_INTERVAL = 5
 HAVE_BLUELAB = False
 HAVE_MQTT = False
 LOCAL_SENSORS = True
+DIRECT_SENSORS = True
 CONTROL_LIGHTS = False
 LOCAL_TIMESTAMP = True
 ARDUINO_TERMINAL = "/dev/ttyACM0"
@@ -207,6 +228,19 @@ influx_schema = {
     "bucket": BUCKET,
 }
 sensor_influx_tags = {'station_id': SENSOR_STATION_ID}
+
+if DIRECT_SENSORS:
+    pulse_count = 0
+    # Local non-DFROBOT sensors
+    btn = DigitalInputDevice(22)
+    btn.when_activated = count_paddle
+
+    factory = None
+    USE_PIGPIOD = False
+    if USE_PIGPIOD:
+        factory = PiGPIOFactory()
+    sensor = DistanceSensor(trigger=17, echo=27, pin_factory=factory, queue_len=20)
+
 
 # MQTT Data
 MEASUREMENT_MQTT = "energy"
@@ -245,6 +279,18 @@ while True:
     #if not mqtt_client.is_connected():
     #    logger.info("mqtt_client reconnecting")
     #    mqtt_client.reconnect()
+
+    if DIRECT_SENSORS:
+        # Need to loop so paddle can count rotations
+        sample_start = time.time()
+        sample_end = sample_start + POLL_INTERVAL
+        pulse_count = 0
+        while time.time() < sample_end:
+            pass
+        _flow_rate = flow_rate(POLL_INTERVAL)
+        time.sleep(2)  # Need to add in pause or the distance sensor or else it measures 0.0
+        _distance = sensor.distance
+
     if CONTROL_LIGHTS:
         on_time, off_time = manage_lights(on_time, off_time, mqtt_client)
     send = True
@@ -257,6 +303,10 @@ while True:
         except json.decoder.JSONDecodeError as e:
             logger.warning("Error reading Arduino data: %s\nDoc was: %s", e.msg, e.doc)
             send = False
+        if DIRECT_SENSORS:
+            data['flow'] = _flow_rate
+            data['distance'] = _distance
+
         if send: 
             send_data_to_influx(influx_schema, MEASUREMENT_SENSOR, sensor_influx_tags, data, local_timestamp=LOCAL_TIMESTAMP)
 
@@ -287,6 +337,8 @@ while True:
         send_data_to_influx(influx_schema, h2_measurement, h2_tags, h2_fields, local_timestamp=True)
         h2_data = []
 
+
     last_timestamp = datetime.datetime.now()
-    time.sleep(POLL_INTERVAL)
+    if not DIRECT_SENSORS:
+        time.sleep(POLL_INTERVAL)
 
