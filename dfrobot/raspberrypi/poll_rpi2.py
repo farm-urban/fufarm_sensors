@@ -17,8 +17,9 @@ import time
 import paho.mqtt.client as mqtt
 
 # For Local Pins
+from gpiozero import DigitalInputDevice
 from gpiozero import DistanceSensor
-from gpiozero.pins.pigpio import PiGPIOFa
+from gpiozero.pins.pigpio import PiGPIOFactory
 
 # Local imports
 import bluelab_logs
@@ -82,6 +83,25 @@ def send_data(schema, iline):
             if number_of_retries > 0:
                 retry = tries < number_of_retries
     return success
+
+def parse_serial_json(myserial):
+    buffer = ''
+    MAXLOOP = 20
+    loop_count = 0
+    data = None
+    while True:
+        if loop_count >= MAXLOOP:
+            warnings.warn("parse_serial_json exceeded MAXLOOP")
+            return None
+        buffer += ser.read().decode("utf-8")
+        print("GOT BUFFER:",buffer)
+        try:
+            data = json.loads(buffer)
+            buffer = ''
+        except json.JSONDecodeError:
+            time.sleep(1)
+        loop_count += 1
+    return data
 
 
 def setup_mqtt(influx_schema, measurement, on_mqtt_message):
@@ -202,8 +222,6 @@ def flow_rate(sample_window):
 
 MOCK = False
 POLL_INTERVAL = 60 * 5 
-MOCK = False
-POLL_INTERVAL = 5 
 HAVE_BLUELAB = False
 HAVE_MQTT = False
 LOCAL_SENSORS = True
@@ -239,7 +257,7 @@ if DIRECT_SENSORS:
     USE_PIGPIOD = False
     if USE_PIGPIOD:
         factory = PiGPIOFactory()
-    sensor = DistanceSensor(trigger=17, echo=27, pin_factory=factory, queue_len=20)
+    sensor = DistanceSensor(trigger=17, echo=27, pin_factory=factory, queue_len=20, partial=True)
 
 
 # MQTT Data
@@ -258,7 +276,7 @@ LIGHT_SCHEDULE = ("06:00",16)
 
 # Logging
 logging.basicConfig(
-    level=LOG_LEVEL, format="%(asctime)s [loz_experiment]: %(message)s"
+    level=LOG_LEVEL, format="%(asctime)s [rpi2]: %(message)s"
 )
 logger = logging.getLogger()
 if HAVE_MQTT:
@@ -297,17 +315,25 @@ while True:
     if LOCAL_SENSORS and ser.in_waiting > 0:
         line = ser.readline().decode("utf-8").rstrip()
         send = True
+        data = {}
         try:
             data = json.loads(line)
             # logger.info("Got data:%s",data)
         except json.decoder.JSONDecodeError as e:
             logger.warning("Error reading Arduino data: %s\nDoc was: %s", e.msg, e.doc)
+            print("SET SEND TO FALSE")
             send = False
+#        data = parse_serial_json(ser)
+#        if data is None:
+#             warnings.warn("No data from parse_serial_json")
+#             data = {}
+#             send = False
         if DIRECT_SENSORS:
             data['flow'] = _flow_rate
             data['distance'] = _distance
 
         if send: 
+            print("SENDING DATA",send)
             send_data_to_influx(influx_schema, MEASUREMENT_SENSOR, sensor_influx_tags, data, local_timestamp=LOCAL_TIMESTAMP)
 
         # Clear anything remaining
@@ -326,6 +352,7 @@ while True:
                 fields = {'cond': d.ec,
                           'ph': d.ph,
                           'temp': d.temp}
+                print("SENDING DATA2")
                 send_data_to_influx(influx_schema, MEASUREMENT_BLUELAB, tags, fields, timestamp=d.timestamp)
 
     if len(h2_data):
@@ -334,6 +361,7 @@ while True:
         h2_measurement = "h2pwr"
         h2_tags = {'station_id': "rpi"}
         h2_fields = {'current': current, 'voltage': voltage}
+        print("SENDING DATA3")
         send_data_to_influx(influx_schema, h2_measurement, h2_tags, h2_fields, local_timestamp=True)
         h2_data = []
 

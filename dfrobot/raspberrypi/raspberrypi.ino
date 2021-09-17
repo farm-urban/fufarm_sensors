@@ -149,8 +149,8 @@ void loop() {
     float h = th.humidity;
     int co2 = getCO2(co2Pin);
     float twet = getTempWet();
-    float ec = getEC(ecPin, twet);
-    float ph = getPH(phPin, twet);
+    //float ec = getEC(ecPin, twet);
+    //float ph = getPH(phPin, twet);
     float flow = getFlow();
     int light = getLight(lightPin);
 
@@ -159,11 +159,12 @@ void loop() {
     doc["humidity"] = h;
     doc["tempwet"] = twet;
     doc["co2"] = co2;
-    doc["cond"] = ec; // For unfathomable reasons influxdb won't accept ec as a name. WTF?!?!?!@@
-    doc["ph"] = ph;
+    //doc["cond"] = ec; // For unfathomable reasons influxdb won't accept ec as a name. WTF?!?!?!@@
+    //doc["ph"] = ph;
     doc["flow"] = flow;
     doc["light"] = light;
     serializeJson(doc, Serial);
+    Serial.println();
     Serial.flush();
 
     delay(SAMPLE_WINDOW);
