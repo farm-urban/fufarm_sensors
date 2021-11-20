@@ -10,10 +10,10 @@
 // #define MOCK;
 //char ssid[] = "HAL8000";
 //char pass[] = "ziLEUTWLj4x";
-// char ssid[] = "Farm Urban";
-// char pass[] = "v8fD53Rs";
-char ssid[] = "Vertical Farm Pilot";
-char pass[] = "1106FaRm1028";
+char ssid[] = "LLS_BYOD";
+char pass[] = "";
+// char ssid[] = "Vertical Farm Pilot";
+// char pass[] = "1106FaRm1028";
 
 
 // Will be different depending on the reference voltage
@@ -27,16 +27,16 @@ char pass[] = "1106FaRm1028";
  * */
 
 // InfluxDB v2 server url, e.g. https://eu-central-1-1.aws.cloud2.influxdata.com (Use: InfluxDB UI -> Load Data -> Client Libraries)
-#define INFLUXDB_SERVER "westeurope-1.azure.cloud2.influxdata.com"
+#define INFLUXDB_SERVER "us-central1-1.gcp.cloud2.influxdata.com"
 // InfluxDB v2 server or cloud API authentication token (Use: InfluxDB UI -> Data -> Tokens -> <select token>)
-#define INFLUXDB_TOKEN "EZEPNrX59lKNzhqtCPbbnDwUX605dZAo4ai-33FvO2MrR3TpM5e0eH08j2rwqbA7XT96ea_ssMwRi1hq01WEZA=="
+#define INFLUXDB_TOKEN "Z7tcYUkp9dG5KKTYHwr2r8ZAAsfrLFgRRj7PUXGYW2wohNYbhYN3_z-Tc2NRU9dZkB4b5-Wz01Ebfs2tBZKuzg=="
 // InfluxDB v2 organization id (Use: InfluxDB UI -> User -> About -> Common Ids )
-#define INFLUXDB_ORG "accounts@farmurban.co.uk"
+#define INFLUXDB_ORG "laurence@farmurban.co.uk"
 // InfluxDB v2 bucket name (Use: InfluxDB UI ->  Data -> Buckets)
-#define INFLUXDB_BUCKET "Heath"
+#define INFLUXDB_BUCKET "Laurence Tents data"
 
 #define INFLUXDB_MEASUREMENT "sensors"
-#define INFLUXDB_STATION_ID "sys1"
+#define INFLUXDB_STATION_ID "tent1"
 
 
 #ifdef MOCK
@@ -47,9 +47,9 @@ char pass[] = "1106FaRm1028";
 #endif
 
 // Analog Inputs
-#define HAVE_LIGHT
+// #define HAVE_LIGHT
 int lightPin = A0;
-#define HAVE_CO2
+// #define HAVE_CO2
 int co2Pin = A1;
 // #define HAVE_EC
 int ecPin = A2;
@@ -58,11 +58,11 @@ int phPin = A3;
 
 
 // Digital Inputs
-#define HAVE_TEMP_HUMIDITY
+// Always need HAVE_TEMP_HUMIDITY or else need to edit the line protocol to not get errors
 int dhtPin = 2; // Temp and Humidity
-// #define HAVE_TEMP_WET
+#define HAVE_TEMP_WET
 int DS18S20_Pin = 3; // Wet temperature
-#define HAVE_FLOW
+// #define HAVE_FLOW
 int SEN0217_Pin = 4; // Flow sensor
 
 
@@ -322,15 +322,14 @@ String createLineProtocol(int light, float tempair, float humidity, float flow, 
   lineProtocol += ",station_id=";
   lineProtocol += INFLUXDB_STATION_ID;
   // Fields
-#ifdef HAVE_LIGHT
-  lineProtocol += " light="; // space first to separate fields
-  lineProtocol += light;
-#endif
-#ifdef HAVE_TEMP_HUMIDITY
-  lineProtocol += ",tempair=";
+// Always need HAVE_TEMP_HUMIDITY or else need to edit this section
+  lineProtocol += " tempair=";
   lineProtocol += String(tempair, 2);
   lineProtocol += ",humidity=";
   lineProtocol += String(humidity, 2);
+#ifdef HAVE_LIGHT
+  lineProtocol += ",light="; // space first to separate fields
+  lineProtocol += light;
 #endif
 #ifdef HAVE_FLOW
   lineProtocol += ",flow=";
@@ -341,7 +340,7 @@ String createLineProtocol(int light, float tempair, float humidity, float flow, 
   lineProtocol += co2;
 #endif
 #ifdef HAVE_TEMP_WET
-  lineProtocol += ",tempwet=";
+  lineProtocol += "tempwet=";
   lineProtocol += String(tempwet, 2);
 #endif
 #ifdef HAVE_EC
