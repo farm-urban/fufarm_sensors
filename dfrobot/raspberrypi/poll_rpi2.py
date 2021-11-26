@@ -94,7 +94,6 @@ def parse_serial_json(myserial):
             warnings.warn("parse_serial_json exceeded MAXLOOP")
             return None
         buffer += ser.read().decode("utf-8")
-        print("GOT BUFFER:",buffer)
         try:
             data = json.loads(buffer)
             buffer = ''
@@ -239,7 +238,7 @@ BUCKET = "cryptfarm"
 #TOKEN = pGHNPOqH8TmwJpU6vko7us8fmTAXltGP_X4yKONTI6l9N-c2tWsscFtCab43qUJo5EcQE3696U9de5gn9NN4Bw==
 TOKEN = open('TOKEN').readline().strip()
 ORG = "farmurban"
-INFLUX_URL = "http://10.8.0.1:8086"
+INFLUX_URL = "http://farmuaa6.vpn.farmurban.co.uk:8086"
 influx_schema = {
     "endpoint": INFLUX_URL,
     "org": ORG, "token": TOKEN,
@@ -321,7 +320,6 @@ while True:
             # logger.info("Got data:%s",data)
         except json.decoder.JSONDecodeError as e:
             logger.warning("Error reading Arduino data: %s\nDoc was: %s", e.msg, e.doc)
-            print("SET SEND TO FALSE")
             send = False
 #        data = parse_serial_json(ser)
 #        if data is None:
@@ -333,7 +331,6 @@ while True:
             data['distance'] = _distance
 
         if send: 
-            print("SENDING DATA",send)
             send_data_to_influx(influx_schema, MEASUREMENT_SENSOR, sensor_influx_tags, data, local_timestamp=LOCAL_TIMESTAMP)
 
         # Clear anything remaining
@@ -352,7 +349,6 @@ while True:
                 fields = {'cond': d.ec,
                           'ph': d.ph,
                           'temp': d.temp}
-                print("SENDING DATA2")
                 send_data_to_influx(influx_schema, MEASUREMENT_BLUELAB, tags, fields, timestamp=d.timestamp)
 
     if len(h2_data):
@@ -361,7 +357,6 @@ while True:
         h2_measurement = "h2pwr"
         h2_tags = {'station_id': "rpi"}
         h2_fields = {'current': current, 'voltage': voltage}
-        print("SENDING DATA3")
         send_data_to_influx(influx_schema, h2_measurement, h2_tags, h2_fields, local_timestamp=True)
         h2_data = []
 
