@@ -1,13 +1,13 @@
 [Unit]
-After=openvpn-client@rpi2.service
+After=tailscaled.service
 
 [Service]
-ExecStart=python3 /opt/fu_sensors/dfrobot/raspberrypi/poll_rpi2.py
+ExecStart=python3 /opt/fu_sensors/dfrobot/raspberrypi/poll_farmpi.py
 WorkingDirectory=/opt/fu_sensors/dfrobot/raspberrypi
 Restart=always
 StandardOutput=append:/opt/fu_sensors/dfrobot/raspberrypi/poll.log
 StandardError=inherit
-SyslogIdentifier=rpi_sensors
+SyslogIdentifier=farmpi_sensors
 User=pi
 Group=pi
 
