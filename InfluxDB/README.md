@@ -39,6 +39,22 @@ create database farmdb
 use farmdb
 
 ## Querying Influxdb data
+## Using Flux
+```
+from(bucket: "cryptfarm")
+  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+  |> filter(fn: (r) => r["_measurement"] == "sensors" and  r["station_id"] == "rpi" and (r["_field"] == "tempair" or r["_field"] == "tempwet" or r["_field"] == "light"))
+  |> map(fn: (r) => ({
+  r with
+  _value:
+    if r["_field"] == "light" then (r["_value"] / 50.0) + 20.0
+    else r["_value"]
+  }))
+  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)
+  |> yield(name: "mean")
+```
+
+### Using FLUXQL
 ```
 influx -precision rfc3339
 SHOW DATABASES
@@ -97,5 +113,3 @@ HR-SR04+ is to work at 3V (https://cpc.farnell.com/multicomp-pro/psg04176/ultras
 * https://core-electronics.com.au/tutorials/hc-sr04-ultrasonic-sensor-with-pycom-tutorial.html
 * https://github.com/mithru/MicroPython-Examples/tree/master/08.Sensors/HC-SR04
 
-
-    # "address": "/dev/cu.usbmodemPy5a3af1",
