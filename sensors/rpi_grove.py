@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 
 import grove_sensors
-from collections import namedtuple
 import logging
 import requests
-import sys
 import time
 
 

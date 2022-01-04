@@ -57,10 +57,11 @@ logger = logging.getLogger()
 sonar = None
 light = None
 sensor_bme680 = None
+gas_baseline = None
 
 
 def setup_sensors():
-    global sonar, light, sensor_bme680
+    global sonar, light, sensor_bme680, gas_baseline
     # Plugged into D5 socket
     sonar = grove_ultrasonic_ranger.GroveUltrasonicRanger(PIN)
 
