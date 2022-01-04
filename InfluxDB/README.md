@@ -8,8 +8,20 @@ Code lives in InfluxDB/pysense
 PyMakr.json
 /Users/jmht/Library/Application Support/Code/User/pymakr.json
 
+## InfluxDbCloud
+To install command-line binaries (`influx`): https://docs.influxdata.com/influxdb/v2.0/install/
 
-Use InfluxDB:
+To setup authentication:
+```influx config create --config-name fu_cloud \
+  --host-url https://westeurope-1.azure.cloud2.influxdata.com \
+  --org accounts@farmurban.co.uk \
+  --token <your-auth-token> \
+  --active ```
+
+  To query schema: https://docs.influxdata.com/influxdb/cloud/query-data/flux/#explore-your-schema
+
+
+## Use InfluxDB
 https://www.influxdata.com/developers/
 https://docs.influxdata.com/influxdb/v1.7/introduction/getting-started/
 
