@@ -53,7 +53,8 @@ import bme680
 INFLUX_URL = 'http://10.8.0.1:8086/write?db=bruntwood'
 STATION_MAC = 'bruntwood'
 SAMPLE_WINDOW = 60 * 5
-MOCK = False
+SAMPLE_WINDOW =  5
+MOCK = True
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [bruntwood_sensors]: %(message)s')
 logger = logging.getLogger()
@@ -93,12 +94,13 @@ def take_readings():
     readings = {}
     readings['distance'] = sonar.get_distance()
     readings['light'] = light.light
-    d = bme680_readings(sensor_bme680)
-    air_quality = air_quality_score(d.gas_resistance, d.humidity, gas_baseline)
-    readings['temperature'] = d.temperature
-    readings['humidity'] = d.humidity
-    readings['pressure'] = d.pressure
-    readings['air_quality'] = air_quality
+    if sensor_bme680:
+        d = bme680_readings(sensor_bme680)
+        air_quality = air_quality_score(d.gas_resistance, d.humidity, gas_baseline)
+        readings['temperature'] = d.temperature
+        readings['humidity'] = d.humidity
+        readings['pressure'] = d.pressure
+        readings['air_quality'] = air_quality
 
     # d = bme680.read()
     # readings['temperature'] = d.temperature
@@ -114,6 +116,11 @@ def take_readings():
 def setup_bme680():
     # Plugged into Grove I2C socket => I2C_ADDR_PRIMARY
     sensor = bme680.BME680(bme680.I2C_ADDR_PRIMARY)
+    try:
+        sensor = bme680.BME680(bme680.I2C_ADDR_PRIMARY)
+    except RuntimeError as e:
+        logger.warning("Unable to setup bme680 humidity sensor")
+        return None
     # These oversampling settings can be tweaked to
     # change the balance between accuracy and noise in
     # the data.
@@ -206,8 +213,9 @@ light = grove_light_sensor_v1_2.GroveLightSensor(adc_channel)
 # Plugged into I2C socket
 # sensor_bme680 = grove_temperature_humidity_bme680.GroveBME680()
 sensor_bme680 = setup_bme680()
-# This takes 5 minutes
-gas_baseline = bme680_gas_baseline(sensor_bme680)
+if sensor_bme680 is not None:
+    # This takes 5 minutes
+    gas_baseline = bme680_gas_baseline(sensor_bme680)
 
 while True:
     sample_start = time.time()
