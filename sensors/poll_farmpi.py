@@ -23,69 +23,11 @@ from gpiozero.pins.pigpio import PiGPIOFactory
 
 # Local imports
 import bluelab_logs
+import influxdb
 
-
-def send_data_to_influx(schema, measurement, tags, fields, timestamp=None, local_timestamp=False):
-    iline = readings_to_influxdb_line(measurement, tags, fields, timestamp=timestamp, local_timestamp=local_timestamp)
-    return send_data(schema, iline)
-
-
-def readings_to_influxdb_line(measurement, tags, fields, timestamp=None, local_timestamp=False):
-    if timestamp and local_timestamp:
-        raise RuntimeError("Cannot include a timestamp with local_timestamp")
-
-    tags = ",".join(["{}={}".format(k, v) for k, v in tags.items()])
-    fields = ",".join(["{}={:e}".format(k, v) for k, v in fields.items() if v is not None])
-    iline = "{},{} {}".format(measurement, tags, fields)
-
-    if timestamp or local_timestamp:
-        if timestamp and isinstance(timestamp, datetime.datetime):
-            timestamp = int(float(timestamp.strftime("%s.%f"))*1000000000)
-        if local_timestamp:
-            #timestamp = int(float(datetime.datetime.utcnow().strftime("%s.%f"))*1000000000)
-            #timestamp = int(time.time()*1000000000)
-            timestamp = time.time_ns()
-        iline += " {}".format(timestamp)
-
-    iline += "\n"
-    return iline
-
-
-def send_data(schema, iline):
-    """
-    https://docs.influxdata.com/influxdb/v2.0/api/#tag/Write
-    https://docs.influxdata.com/influxdb/v2.0/write-data/developer-tools/api/
-    """
-    url = "{}/api/v2/write".format(schema["endpoint"])
-    params = {"org": schema["org"], "bucket": schema["bucket"]}
-    headers = {"Authorization": "Token {}".format(schema["token"])}
-    logger.info(
-        "Sending url: {} params: {} headers: {} data: {}".format(
-            url, params, headers, iline
-        )
-    )
-    if MOCK:
-        return
-    success = False
-    retry = True
-    number_of_retries = 3
-    tries = 0
-    while retry:
-         try:
-            response = requests.post(url, headers=headers, params=params, data=iline)
-            logger.debug("Sent data - status_code: {} - text: {}".format(response.status_code, response.text))
-            success = True
-            break
-         except (requests.exceptions.ConnectionError,
-                 requests.exceptions.Timeout) as e:
-            logger.error("Network error: {}".format(e))
-            tries += 1
-            if number_of_retries > 0:
-                retry = tries < number_of_retries
-    return success
 
 def parse_serial_json(myserial):
-    buffer = ''
+    buffer = ""
     MAXLOOP = 20
     loop_count = 0
     data = None
@@ -96,7 +38,7 @@ def parse_serial_json(myserial):
         buffer += ser.read().decode("utf-8")
         try:
             data = json.loads(buffer)
-            buffer = ''
+            buffer = ""
         except json.JSONDecodeError:
             time.sleep(1)
         loop_count += 1
@@ -106,11 +48,10 @@ def parse_serial_json(myserial):
 def setup_mqtt(influx_schema, measurement, on_mqtt_message):
     ## Setup MQTT
     client = mqtt.Client()
-    #client.username_pw_set(username, password=None)
-    userdata = { 'influx_schema': influx_schema,
-                'measurement': measurement}
+    # client.username_pw_set(username, password=None)
+    userdata = {"influx_schema": influx_schema, "measurement": measurement}
     client.user_data_set(userdata)
-    #client.connect("192.168.4.1", port=1883)
+    # client.connect("192.168.4.1", port=1883)
     client.connect("localhost", port=1883)
 
     # Add different plugs
@@ -136,15 +77,19 @@ def on_mqtt_message(client, userdata, message):
         try:
             data = json.loads(decoded_message)
         except json.decoder.JSONDecodeError as e:
-            logger.warning(f"Error decoding MQTT data to JSON: {e.msg}\nMessage was: {e.doc}")
-            data = {'current': -1.0, 'voltage': -1.0}
+            logger.warning(
+                f"Error decoding MQTT data to JSON: {e.msg}\nMessage was: {e.doc}"
+            )
+            data = {"current": -1.0, "voltage": -1.0}
         h2_data.append(data)
         return
 
     try:
         data = json.loads(decoded_message)
     except json.decoder.JSONDecodeError as e:
-        logger.warning(f"Error decoding MQTT data to JSON: {e.msg}\nMessage was: {e.doc}")
+        logger.warning(
+            f"Error decoding MQTT data to JSON: {e.msg}\nMessage was: {e.doc}"
+        )
 
     # Process individual message
     influx_schema = userdata["influx_schema"]
@@ -153,11 +98,15 @@ def on_mqtt_message(client, userdata, message):
     station_id = message.topic.split("/")[1]
     if station_id in MQTT_TO_STATIONID.keys():
         station_id = MQTT_TO_STATIONID[station_id]
-    tags = {'station_id' : station_id}
+    tags = {"station_id": station_id}
 
-    fields = data['ENERGY']
-    fields['TotalStartTime'] = datetime.datetime.strptime(fields['TotalStartTime'],"%Y-%m-%dT%H:%M:%S").timestamp() 
-    send_data_to_influx(influx_schema, measurement, tags, fields, local_timestamp=LOCAL_TIMESTAMP)
+    fields = data["ENERGY"]
+    fields["TotalStartTime"] = datetime.datetime.strptime(
+        fields["TotalStartTime"], "%Y-%m-%dT%H:%M:%S"
+    ).timestamp()
+    send_data_to_influx(
+        influx_schema, measurement, tags, fields, local_timestamp=LOCAL_TIMESTAMP
+    )
 
 
 def is_past(trigger):
@@ -166,13 +115,17 @@ def is_past(trigger):
 
 def create_schedule_times(schedule):
     today = datetime.date.today()
-    _on_time = datetime.time(hour=int(schedule[0].split(":")[0]), minute=int(schedule[0].split(":")[1]))
-    on_time = datetime.datetime.combine(today,_on_time)
+    _on_time = datetime.time(
+        hour=int(schedule[0].split(":")[0]), minute=int(schedule[0].split(":")[1])
+    )
+    on_time = datetime.datetime.combine(today, _on_time)
     _off_time = (on_time + datetime.timedelta(hours=schedule[1])).time()
-    on_time = datetime.datetime.combine(today,_on_time)
-    off_time = datetime.datetime.combine(today,_off_time)
+    on_time = datetime.datetime.combine(today, _on_time)
+    off_time = datetime.datetime.combine(today, _off_time)
     on_time, off_time = manage_lights(on_time, off_time)
-    logger.info(f"create_schedule_time: lights next set to go on at {on_time} and off at {off_time}")
+    logger.info(
+        f"create_schedule_time: lights next set to go on at {on_time} and off at {off_time}"
+    )
     return on_time, off_time
 
 
@@ -183,24 +136,31 @@ def manage_lights(on_time, off_time, mqtt_client=None):
         on_time = on_time + datetime.timedelta(hours=24)
         off_time = off_time + datetime.timedelta(hours=24)
         if mqtt_client:
-            logger.info(f"Turning lights off at: {datetime.datetime.now()} - next on at: {on_time}")
+            logger.info(
+                f"Turning lights off at: {datetime.datetime.now()} - next on at: {on_time}"
+            )
             mqtt_client.publish("cmnd/FU_System_2/Power", "0")
     elif is_past(on_time):
         # on_time past, off_time is in future - lights should be on and on_time pushed to tomorrow
         on_time = on_time + datetime.timedelta(hours=24)
         if mqtt_client:
-            logger.info(f"Turning lights on at: {datetime.datetime.now()} - next off at: {off_time}")
+            logger.info(
+                f"Turning lights on at: {datetime.datetime.now()} - next off at: {off_time}"
+            )
             mqtt_client.publish("cmnd/FU_System_2/Power", "1")
     elif is_past(off_time):
         # off_time past, on_time is in future - lights should be off and off_time pushed to tomorrow
         off_time = off_time + datetime.timedelta(hours=24)
         if mqtt_client:
-            logger.info(f"Turning lights off at: {datetime.datetime.now()} - next on at: {on_time}")
+            logger.info(
+                f"Turning lights off at: {datetime.datetime.now()} - next on at: {on_time}"
+            )
             mqtt_client.publish("cmnd/FU_System_2/Power", "0")
     else:
         # Both on_time and off_time in the future so nothing to do
         pass
     return on_time, off_time
+
 
 def count_paddle():
     global pulse_count
@@ -220,7 +180,7 @@ def flow_rate(sample_window):
 
 
 MOCK = False
-POLL_INTERVAL = 60 * 5 
+POLL_INTERVAL = 60 * 5
 HAVE_BLUELAB = False
 HAVE_MQTT = False
 LOCAL_SENSORS = True
@@ -235,16 +195,17 @@ LOG_LEVEL = logging.DEBUG
 SENSOR_STATION_ID = "rpi"
 MEASUREMENT_SENSOR = "sensors"
 BUCKET = "cryptfarm"
-#TOKEN = pGHNPOqH8TmwJpU6vko7us8fmTAXltGP_X4yKONTI6l9N-c2tWsscFtCab43qUJo5EcQE3696U9de5gn9NN4Bw==
-TOKEN = open('TOKEN').readline().strip()
+# TOKEN = pGHNPOqH8TmwJpU6vko7us8fmTAXltGP_X4yKONTI6l9N-c2tWsscFtCab43qUJo5EcQE3696U9de5gn9NN4Bw==
+TOKEN = open("TOKEN").readline().strip()
 ORG = "farmurban"
 INFLUX_URL = "http://farmuaa6.vpn.farmurban.co.uk:8086"
 influx_schema = {
     "endpoint": INFLUX_URL,
-    "org": ORG, "token": TOKEN,
+    "org": ORG,
+    "token": TOKEN,
     "bucket": BUCKET,
 }
-sensor_influx_tags = {'station_id': SENSOR_STATION_ID}
+sensor_influx_tags = {"station_id": SENSOR_STATION_ID}
 
 if DIRECT_SENSORS:
     pulse_count = 0
@@ -256,27 +217,28 @@ if DIRECT_SENSORS:
     USE_PIGPIOD = False
     if USE_PIGPIOD:
         factory = PiGPIOFactory()
-    sensor = DistanceSensor(trigger=17, echo=27, pin_factory=factory, queue_len=20, partial=True)
+    sensor = DistanceSensor(
+        trigger=17, echo=27, pin_factory=factory, queue_len=20, partial=True
+    )
 
 
 # MQTT Data
 MEASUREMENT_MQTT = "energy"
 MEASUREMENT_BLUELAB = "bluelab"
-#MQTT_TO_STATIONID = { 'FU_System_2': 'Propagation'}
+# MQTT_TO_STATIONID = { 'FU_System_2': 'Propagation'}
 MQTT_TO_STATIONID = {}
-MQTT_SUBSCRIBE_TOPICS = [ "tele/FU_Fans/SENSOR",
-                          "tele/FU_System_1/SENSOR",
-                          "tele/FU_System_2/SENSOR",
-                          "h2Pwr/STATUS" ]
-BLUELAB_TAG_TO_STATIONID = { '52rf': 'sys1',
-                             '4q3f': 'sys2'}
-LIGHT_SCHEDULE = ("06:00",16)
+MQTT_SUBSCRIBE_TOPICS = [
+    "tele/FU_Fans/SENSOR",
+    "tele/FU_System_1/SENSOR",
+    "tele/FU_System_2/SENSOR",
+    "h2Pwr/STATUS",
+]
+BLUELAB_TAG_TO_STATIONID = {"52rf": "sys1", "4q3f": "sys2"}
+LIGHT_SCHEDULE = ("06:00", 16)
 
 
 # Logging
-logging.basicConfig(
-    level=LOG_LEVEL, format="%(asctime)s [rpi2]: %(message)s"
-)
+logging.basicConfig(level=LOG_LEVEL, format="%(asctime)s [rpi2]: %(message)s")
 logger = logging.getLogger()
 if HAVE_MQTT:
     mqtt_client = setup_mqtt(influx_schema, MEASUREMENT_MQTT, on_mqtt_message)
@@ -290,22 +252,26 @@ if CONTROL_LIGHTS:
 if HAVE_MQTT:
     mqtt_client.loop_start()
 last_timestamp = datetime.datetime.now() - datetime.timedelta(seconds=POLL_INTERVAL)
-logger.info(f"\n\n### Sensor service starting loop at: {datetime.datetime.strftime(datetime.datetime.now(),'%d-%m-%Y %H:%M:%S')} ###\n\n")
+logger.info(
+    f"\n\n### Sensor service starting loop at: {datetime.datetime.strftime(datetime.datetime.now(),'%d-%m-%Y %H:%M:%S')} ###\n\n"
+)
 while True:
     # Below seems to raise an exception - not sure why
-    #if not mqtt_client.is_connected():
+    # if not mqtt_client.is_connected():
     #    logger.info("mqtt_client reconnecting")
     #    mqtt_client.reconnect()
 
     if DIRECT_SENSORS:
-        # Need to loop so paddle can count rotations
+        #  Need to loop so paddle can count rotations
         sample_start = time.time()
         sample_end = sample_start + POLL_INTERVAL
         pulse_count = 0
         while time.time() < sample_end:
             pass
         _flow_rate = flow_rate(POLL_INTERVAL)
-        time.sleep(2)  # Need to add in pause or the distance sensor or else it measures 0.0
+        time.sleep(
+            2
+        )  # Need to add in pause or the distance sensor or else it measures 0.0
         _distance = sensor.distance
 
     if CONTROL_LIGHTS:
@@ -321,17 +287,23 @@ while True:
         except json.decoder.JSONDecodeError as e:
             logger.warning("Error reading Arduino data: %s\nDoc was: %s", e.msg, e.doc)
             send = False
-#        data = parse_serial_json(ser)
-#        if data is None:
-#             warnings.warn("No data from parse_serial_json")
-#             data = {}
-#             send = False
+        #        data = parse_serial_json(ser)
+        #        if data is None:
+        #             warnings.warn("No data from parse_serial_json")
+        #             data = {}
+        #             send = False
         if DIRECT_SENSORS:
-            data['flow'] = _flow_rate
-            data['distance'] = _distance
+            data["flow"] = _flow_rate
+            data["distance"] = _distance
 
-        if send: 
-            send_data_to_influx(influx_schema, MEASUREMENT_SENSOR, sensor_influx_tags, data, local_timestamp=LOCAL_TIMESTAMP)
+        if send:
+            influxdb.send_data_to_influx(
+                influx_schema,
+                MEASUREMENT_SENSOR,
+                sensor_influx_tags,
+                data,
+                local_timestamp=LOCAL_TIMESTAMP,
+            )
 
         # Clear anything remaining
         while ser.in_waiting > 0:
@@ -339,29 +311,33 @@ while True:
         ser.reset_input_buffer()
         ser.reset_output_buffer()
     send = True
-    
+
     if HAVE_BLUELAB:
         bluelab_data = bluelab_logs.sample_bluelab_data(last_timestamp, POLL_INTERVAL)
         if bluelab_data is not None and len(bluelab_data) > 0:
             for d in bluelab_data:
                 #  ['tag', 'timestamp', 'ec', 'ph', 'temp']
-                tags = {'station_id': BLUELAB_TAG_TO_STATIONID[d.tag]}
-                fields = {'cond': d.ec,
-                          'ph': d.ph,
-                          'temp': d.temp}
-                send_data_to_influx(influx_schema, MEASUREMENT_BLUELAB, tags, fields, timestamp=d.timestamp)
+                tags = {"station_id": BLUELAB_TAG_TO_STATIONID[d.tag]}
+                fields = {"cond": d.ec, "ph": d.ph, "temp": d.temp}
+                influxdb.send_data_to_influx(
+                    influx_schema,
+                    MEASUREMENT_BLUELAB,
+                    tags,
+                    fields,
+                    timestamp=d.timestamp,
+                )
 
     if len(h2_data):
-        current = sum([d['current'] for d in h2_data])/len(h2_data)
-        voltage = sum([d['voltage'] for d in h2_data])/len(h2_data)
+        current = sum([d["current"] for d in h2_data]) / len(h2_data)
+        voltage = sum([d["voltage"] for d in h2_data]) / len(h2_data)
         h2_measurement = "h2pwr"
-        h2_tags = {'station_id': "rpi"}
-        h2_fields = {'current': current, 'voltage': voltage}
-        send_data_to_influx(influx_schema, h2_measurement, h2_tags, h2_fields, local_timestamp=True)
+        h2_tags = {"station_id": "rpi"}
+        h2_fields = {"current": current, "voltage": voltage}
+        influxdb.send_data_to_influx(
+            influx_schema, h2_measurement, h2_tags, h2_fields, local_timestamp=True
+        )
         h2_data = []
-
 
     last_timestamp = datetime.datetime.now()
     if not DIRECT_SENSORS:
         time.sleep(POLL_INTERVAL)
-
