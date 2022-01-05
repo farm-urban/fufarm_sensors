@@ -12,11 +12,14 @@ PyMakr.json
 To install command-line binaries (`influx`): https://docs.influxdata.com/influxdb/v2.0/install/
 
 To setup authentication:
-```influx config create --config-name fu_cloud \
+
+```
+influx config create --config-name fu_cloud \
   --host-url https://westeurope-1.azure.cloud2.influxdata.com \
   --org accounts@farmurban.co.uk \
   --token <your-auth-token> \
-  --active ```
+  --active
+  ```
 
   To query schema: https://docs.influxdata.com/influxdb/cloud/query-data/flux/#explore-your-schema
 
@@ -52,6 +55,8 @@ use farmdb
 
 ## Querying Influxdb data
 ## Using Flux
+
+
 ```
 from(bucket: "cryptfarm")
   |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
@@ -64,6 +69,7 @@ from(bucket: "cryptfarm")
   }))
   |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)
   |> yield(name: "mean")
+
 ```
 
 ### Using FLUXQL
