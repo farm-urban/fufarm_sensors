@@ -10,7 +10,8 @@ import influxdb
 
 SAMPLE_WINDOW = 60 * 5
 SAMPLE_WINDOW = 5
-MOCK = True
+LOGLEVEL=logging.DEBUG
+MOCK = False
 grove_sensors.MOCK = MOCK
 influxdb.MOCK = MOCK
 
@@ -18,8 +19,8 @@ LOCAL_TIMESTAMP = True
 SENSOR_STATION_ID = "bruntwood"
 MEASUREMENT = "sensors"
 BUCKET = "ediblewalls"
-TOKEN = "pGHNPOqH8TmwJpU6vko7us8fmTAXltGP_X4yKONTI6l9N-c2tWsscFtCab43qUJo5EcQE3696U9de5gn9NN4Bw=="
-# TOKEN = open("TOKEN").readline().strip()
+#TOKEN = "pGHNPOqH8TmwJpU6vko7us8fmTAXltGP_X4yKONTI6l9N-c2tWsscFtCab43qUJo5EcQE3696U9de5gn9NN4Bw=="
+TOKEN = open("TOKEN").readline().strip()
 ORG = "farmurban"
 INFLUX_URL = "http://farmuaa6.vpn.farmurban.co.uk:8086"
 influx_schema = {
@@ -32,7 +33,7 @@ sensor_influx_tags = {"station_id": SENSOR_STATION_ID}
 
 
 logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s [bruntwood_sensors]: %(message)s"
+    level=LOGLEVEL, format="%(asctime)s [bruntwood_sensors]: %(message)s"
 )
 logger = logging.getLogger()
 
