@@ -152,6 +152,7 @@ LOG_LEVEL = logging.DEBUG
 
 
 # Influxdb Configuration
+influxdb.MOCK = MOCK
 SENSOR_STATION_ID = "rpi"
 MEASUREMENT_SENSOR = "sensors"
 BUCKET = "cryptfarm"
@@ -191,6 +192,8 @@ if HAVE_MQTT:
 h2_data = []
 if CONTROL_LIGHTS:
     on_time, off_time = create_schedule_times(LIGHT_SCHEDULE)
+if DIRECT_SENSORS:
+    direct_sensors_rpi.setup_devices()
 if HAVE_MQTT:
     mqtt_client.loop_start()
 last_timestamp = datetime.datetime.now() - datetime.timedelta(seconds=POLL_INTERVAL)

@@ -2,10 +2,10 @@
 After=tailscaled.service
 
 [Service]
-ExecStart=python3 /opt/fu_sensors/dfrobot/raspberrypi/poll_farmpi.py
-WorkingDirectory=/opt/fu_sensors/dfrobot/raspberrypi
+ExecStart=python3 /opt/fu_sensors/sensors/rpi_all_sensors.py
+WorkingDirectory=/opt/fu_sensors/sensors
 Restart=always
-StandardOutput=append:/opt/fu_sensors/dfrobot/raspberrypi/poll.log
+StandardOutput=append:/opt/fu_sensors/sensors/poll.log
 StandardError=inherit
 SyslogIdentifier=farmpi_sensors
 User=pi

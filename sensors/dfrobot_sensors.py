@@ -45,9 +45,6 @@ def sensor_readings():
         #             warnings.warn("No data from parse_serial_json")
         #             data = {}
         #             send = False
-        if DIRECT_SENSORS:
-            data["flow"] = _flow_rate
-            data["distance"] = _distance
 
         # Clear anything remaining
         while serial_terminal.in_waiting > 0:
@@ -56,6 +53,7 @@ def sensor_readings():
         serial_terminal.reset_output_buffer()
         return data
     else:
+        logger.warning("dfrobot Arduino nothing in serial buffer")
         return None
 
 
