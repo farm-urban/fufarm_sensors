@@ -6,25 +6,18 @@ import influxdb
 import direct_sensors_rpi
 
 
-INFLUX_URL = "http://10.8.0.1:8086/write?db=farmdb"
-STATION_MAC = "rpi2utc"
-SAMPLE_WINDOW = 60 * 5
-# SAMPLE_WINDOW = 5
-MOCK = False
-INFLUX_SCHEMA = {"measurement": "fu_sensors", "tags": {"station_id": STATION_MAC}}
-
+direct_sensors_rpi.USE_PIGPIOD = True
 
 SAMPLE_WINDOW = 60 * 5
 SAMPLE_WINDOW = 5
 LOGLEVEL = logging.DEBUG
-MOCK = False
+MOCK = True
 influxdb.MOCK = MOCK
 
 LOCAL_TIMESTAMP = True
 SENSOR_STATION_ID = "farm"
-MEASUREMENT = "sensors"
+MEASUREMENT = "sensors_direct"
 BUCKET = "cryptfarm"
-# TOKEN = "pGHNPOqH8TmwJpU6vko7us8fmTAXltGP_X4yKONTI6l9N-c2tWsscFtCab43qUJo5EcQE3696U9de5gn9NN4Bw=="
 TOKEN = open("TOKEN").readline().strip()
 ORG = "farmurban"
 INFLUX_URL = "http://farmuaa6.vpn.farmurban.co.uk:8086"
@@ -43,12 +36,12 @@ logging.basicConfig(
 logger = logging.getLogger()
 
 
-direct_sensors_rpi.reset_flow_counter()
 readings = {}
+direct_sensors_rpi.setup_devices()
 while True:
     sample_start = time.time()
     sample_end = sample_start + SAMPLE_WINDOW
-    pulse_count = 0
+    direct_sensors_rpi.reset_flow_counter()
     while time.time() < sample_end:
         # Loop to accumulate flow pulses
         pass

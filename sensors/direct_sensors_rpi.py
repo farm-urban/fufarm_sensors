@@ -37,6 +37,7 @@ import direct_sensors_rpi
 SAMPLE_WINDOW = 5
 
 direct_sensors_rpi.reset_flow_counter()
+direct_sensors_rpi.setup_devices()
 readings = {}
 while True:
     sample_start = time.time()
@@ -53,15 +54,20 @@ while True:
 import logging
 
 from gpiozero import DistanceSensor
-from gpiozero.pins.pigpio import PiGPIOFactory
 from gpiozero import DigitalInputDevice
+from gpiozero.pins.native import NativeFactory
+from gpiozero.pins.pigpio import PiGPIOFactory
 
 
 TRIGGER_PIN = 17
-ECHO_PIN = 17
+ECHO_PIN = 27
+FLOW_PIN = 22
 USE_PIGPIOD = False
 
 pulse_count = 0
+btn = None
+distance_sensor = None
+
 logger = logging.getLogger()
 
 
@@ -87,13 +93,17 @@ def reset_flow_counter():
     pulse_count = 0
 
 
-btn = DigitalInputDevice(22)
-btn.when_activated = count_paddle
+def setup_devices():
+    global btn, distance_sensor
+    btn = DigitalInputDevice(FLOW_PIN)
+    btn.when_activated = count_paddle
 
-factory = None
-if USE_PIGPIOD:
-    factory = PiGPIOFactory()
+    factory = NativeFactory()
+    if USE_PIGPIOD:
+        factory = PiGPIOFactory()
+    else:
+        factory = NativeFactory()
 
-distance_sensor = DistanceSensor(
-    trigger=TRIGGER_PIN, echo=ECHO_PIN, pin_factory=factory, queue_len=20
-)
+    distance_sensor = DistanceSensor(
+        trigger=TRIGGER_PIN, echo=ECHO_PIN, pin_factory=factory, queue_len=20, partial=True
+    )
