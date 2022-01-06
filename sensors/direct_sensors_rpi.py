@@ -98,12 +98,15 @@ def setup_devices():
     btn = DigitalInputDevice(FLOW_PIN)
     btn.when_activated = count_paddle
 
-    factory = NativeFactory()
     if USE_PIGPIOD:
         factory = PiGPIOFactory()
     else:
         factory = NativeFactory()
 
     distance_sensor = DistanceSensor(
-        trigger=TRIGGER_PIN, echo=ECHO_PIN, pin_factory=factory, queue_len=20, partial=True
+        trigger=TRIGGER_PIN,
+        echo=ECHO_PIN,
+        pin_factory=factory,
+        queue_len=20,
+        partial=True,
     )
