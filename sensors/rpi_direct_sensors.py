@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import logging
 import time
 
@@ -6,8 +7,7 @@ import influxdb
 import direct_sensors_rpi
 
 
-direct_sensors_rpi.USE_PIGPIOD = True
-
+#direct_sensors_rpi.USE_PIGPIOD = True
 SAMPLE_WINDOW = 60 * 5
 SAMPLE_WINDOW = 5
 LOGLEVEL = logging.DEBUG
@@ -46,7 +46,6 @@ while True:
         # Loop to accumulate flow pulses
         pass
     readings["flow_rate"] = direct_sensors_rpi.flow_rate(SAMPLE_WINDOW)
-    time.sleep(2)  # Need to add in pause or the distance sensor or else it measures 0.0
     readings["distance"] = direct_sensors_rpi.distance_sensor.distance
     influxdb.send_data_to_influx(
         influx_schema,
