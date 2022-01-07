@@ -8,7 +8,7 @@ import influxdb
 
 
 SAMPLE_WINDOW = 60 * 5
-LOGLEVEL=logging.DEBUG
+LOGLEVEL=logging.INFO
 MOCK = False
 grove_sensors.MOCK = MOCK
 influxdb.MOCK = MOCK
@@ -18,8 +18,8 @@ SENSOR_STATION_ID = "bruntwood"
 MEASUREMENT = "sensors"
 BUCKET = "ediblewalls"
 TOKEN = open("TOKEN").readline().strip()
-ORG = "farmurban"
-INFLUX_URL = "http://farmuaa6.vpn.farmurban.co.uk:8086"
+ORG = "Farm Urban"
+INFLUX_URL = "http://farmuaa1.vpn.farmurban.co.uk:8086"
 influx_schema = {
     "endpoint": INFLUX_URL,
     "org": ORG,
