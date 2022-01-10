@@ -1,3 +1,6 @@
+## Raspberry Pi GPIO
+* [GPIO Layout](https://www.raspberrypi.org/documentation/usage/gpio/)
+
 ## Laurence's sensors
 Laurence's [spreadsheet](https://docs.google.com/spreadsheets/d/1RAleg7ZHxuUZmmoM4lozdfwikm91hurRqoSRQPs-0vs/edit#gid=290336845) with list of sensors.
 
