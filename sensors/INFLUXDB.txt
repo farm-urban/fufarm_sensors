@@ -34,6 +34,12 @@ Restore
 influx restore --bucket cryptfarm cryptfarm
 ```
 
+Alternative?
+```
+influx query 'from(bucket: "tempbucket") |> range(start: -10d)' --raw | tee /dev/tty | influx write --bucket originalbucket --format csv --rate-limit 20MB/min
+```
+
+
 #### CSV Export
 To download data as csv for export (to e.g. Pandas):
 ```
