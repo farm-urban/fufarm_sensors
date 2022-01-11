@@ -23,21 +23,17 @@ File: ```~/.influxdbv2/configs```
   active = true
 ```
 ### Data Backup
-### Native backup
-Backup:
+Oh host machine
 ```
-influx backup --bucket cryptfarm ~/cryptfarm
-```
-
-Restore
-```
-influx restore --bucket cryptfarm cryptfarm
+influx query 'from(bucket: "cryptfarm") |> range(start: -1y)' --raw > cryptfarm.csv
 ```
 
-Alternative?
+On target machine
 ```
-influx query 'from(bucket: "tempbucket") |> range(start: -10d)' --raw | tee /dev/tty | influx write --bucket originalbucket --format csv --rate-limit 20MB/min
+influx bucket create --name cryptfarm
+influx write --bucket cryptfarm --format csv  --file cryptfarm.csv
 ```
+
 
 
 #### CSV Export
