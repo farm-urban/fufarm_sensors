@@ -156,10 +156,9 @@ influxdb.MOCK = MOCK
 SENSOR_STATION_ID = "rpi"
 MEASUREMENT_SENSOR = "sensors"
 BUCKET = "cryptfarm"
-# TOKEN = pGHNPOqH8TmwJpU6vko7us8fmTAXltGP_X4yKONTI6l9N-c2tWsscFtCab43qUJo5EcQE3696U9de5gn9NN4Bw==
 TOKEN = open("TOKEN").readline().strip()
-ORG = "farmurban"
-INFLUX_URL = "http://farmuaa6.vpn.farmurban.co.uk:8086"
+ORG = "Farm Urban"
+INFLUX_URL = "http://farmuaa1.vpn.farmurban.co.uk:8086"
 influx_schema = {
     "endpoint": INFLUX_URL,
     "org": ORG,
