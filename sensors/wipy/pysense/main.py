@@ -27,7 +27,7 @@ MEASUREMENT = "sensors"
 BUCKET = "cryptfarm"
 TOKEN = "scW9V68kenPTzEkGUAtky-7awOMuo71pPGnCJ3gEdJWNNFBrlvp5atHTSFttVY4rRj0796xBgkuaF_YkSQExBg=="
 # TOKEN = open("TOKEN").readline().strip()
-ORG = "Farm%20Urban"  # Currently need to manually encode spaces
+ORG = "Farm Urban"
 INFLUX_URL = "http://farmuaa1.farmurban.co.uk:8086"
 influx_schema = {
     "endpoint": INFLUX_URL,
@@ -171,7 +171,7 @@ def send_data(schema, iline):
     url = "{}/api/v2/write".format(schema["endpoint"])
     params = {"org": schema["org"], "bucket": schema["bucket"]}
     headers = {"Authorization": "Token {}".format(schema["token"])}
-    url += "?" + "&".join(["{}={}".format(k, v) for k, v in params.items()])
+    url = url_encode(url, params)
     print("Sending url: {} headers: {} data: {}".format(url, headers, iline))
     if MOCK:
         return
@@ -192,6 +192,48 @@ def send_data(schema, iline):
             if number_of_retries > 0:
                 retry = tries < number_of_retries
     return success
+
+
+def url_encode(url, params):
+    url_encode_table = {
+        " ": "%20",
+        "!": "%21",
+        '"': "%22",
+        "#": "%23",
+        "$": "%24",
+        "%": "%25",
+        "&": "%26",
+        "'": "%27",
+        "(": "%28",
+        ")": "%29",
+        "*": "%2A",
+        "+": "%2B",
+        ",": "%2C",
+        "-": "%2D",
+        ".": "%2E",
+        "/": "%2F",
+        ":": "%3A",
+        ";": "%3B",
+        "<": "%3C",
+        "=": "%3D",
+        ">": "%3E",
+        "?": "%3F",
+        "@": "%40",
+        "[": "%5B",
+        "]": "%5D",
+        "^": "%5E",
+        "_": "%5F",
+    }
+
+    # Encode all characters in the keys and values of the params dict
+    params = {
+        "".join([url_encode_table.get(s, s) for s in k]): "".join(
+            [url_encode_table.get(s, s) for s in v]
+        )
+        for k, v in params.items()
+    }
+    url += "?" + "&".join(["{}={}".format(k, v) for k, v in params.items()])
+    return url
 
 
 def next_logfile(name_stem="logfile"):
