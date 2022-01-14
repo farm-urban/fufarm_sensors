@@ -15,14 +15,41 @@ from MPL3115A2 import MPL3115A2, PRESSURE  # Barometer and temperature
 from SI7006A20 import SI7006A20  # Humidity & temperature.
 
 
+MAC_ADDRESS = binascii.hexlify(machine.unique_id()).decode("utf-8")
+mac_address_to_station_id = {
+    "30aea44e7b60": "farmwipy1",
+    "3c71bf86f644": "farmwipy2",
+    "3c71bf881410": "farmwipy3",
+    "30aea42d1734": "farmwipy4",
+}
+SENSOR_STATION_ID = mac_address_to_station_id[MAC_ADDRESS]
+
 NETWORK_SSID = "LLS_BYOD"
 NETWORK_KEY = ""
 # NETWORK_SSID = "Farm Urban"
 # NETWORK_KEY = "v8fD53Rs"
+# NETWORK_SSID = "PLUSNET-K9PM"
+# NETWORK_KEY = "925c9c64a5"
 
 MOCK = False
 SAMPLE_WINDOW = 60 * 10
-SENSOR_STATION_ID = "farmwipy1"
+
+if SENSOR_STATION_ID == "farmwipy1":
+    BAROMETER_TEMPERATURE_CORRECTION = -5.9
+    HUMIDITY_TEMPERATURE_CORRECTION = -7.75
+elif SENSOR_STATION_ID == "farmwipy2":
+    BAROMETER_TEMPERATURE_CORRECTION = 0.0
+    HUMIDITY_TEMPERATURE_CORRECTION = 0.0
+elif SENSOR_STATION_ID == "farmwipy3":
+    BAROMETER_TEMPERATURE_CORRECTION = -5.3
+    HUMIDITY_TEMPERATURE_CORRECTION = -7.15
+elif SENSOR_STATION_ID == "farmwipy3":
+    BAROMETER_TEMPERATURE_CORRECTION = 0.0
+    HUMIDITY_TEMPERATURE_CORRECTION = 0.0
+else:
+    BAROMETER_TEMPERATURE_CORRECTION = 0.0
+    HUMIDITY_TEMPERATURE_CORRECTION = 0.0
+
 MEASUREMENT = "sensors"
 BUCKET = "cryptfarm"
 TOKEN = "scW9V68kenPTzEkGUAtky-7awOMuo71pPGnCJ3gEdJWNNFBrlvp5atHTSFttVY4rRj0796xBgkuaF_YkSQExBg=="
@@ -92,14 +119,24 @@ def connect_wireless(wlan):
 
 
 def internal_sensor_readings():
+    """
+    Recalibration against the farm sensors:
+
+    barometer_temperature - 31.5
+    humidity_temperature - 33.35
+    temp pi - 25.6
+
+    """
     # pycom.rgbled(LED['green'])
     # print("Take readings")
     l0, l1 = light_sensor.light()
     return {
         "barometer_pressure": barometer.pressure(),
-        "barometer_temperature": barometer.temperature(),
+        "barometer_temperature": barometer.temperature()
+        + BAROMETER_TEMPERATURE_CORRECTION,
         "humidity_humidity": humidity_sensor.humidity(),
-        "humidity_temperature": humidity_sensor.temperature(),
+        "humidity_temperature": humidity_sensor.temperature()
+        + HUMIDITY_TEMPERATURE_CORRECTION,
         "ambient_light_0": l0,
         "ambient_light_1": l1,
     }
@@ -256,7 +293,7 @@ def next_logfile(name_stem="logfile"):
 
 
 def init_logfile(readings, station_id):
-    " Open the csv logfile and initialise it with the headings"
+    "Open the csv logfile and initialise it with the headings"
     logfile_path = next_logfile()
     logfile = open(logfile_path, "w")
     headings = ["timestamp", "stationid"] + sorted(readings.keys())
@@ -292,9 +329,6 @@ def rate_pin_cb(arg):
 ################################################################################
 # Start Script
 ################################################################################
-if SENSOR_STATION_ID is None:
-    SENSOR_STATION_ID = binascii.hexlify(machine.unique_id()).decode("utf-8")
-
 if not HAVE_EXTERNAL_SENSORS:
     hcsr04.MOCK = True
 
