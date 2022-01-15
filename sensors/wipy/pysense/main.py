@@ -14,15 +14,50 @@ from LTR329ALS01 import LTR329ALS01  # Ambient Light
 from MPL3115A2 import MPL3115A2, PRESSURE  # Barometer and temperature
 from SI7006A20 import SI7006A20  # Humidity & temperature.
 
-
-MAC_ADDRESS = binascii.hexlify(machine.unique_id()).decode("utf-8")
-mac_address_to_station_id = {
+MAC_ADDRESS_TO_STATION_ID = {
     "30aea44e7b60": "farmwipy1",
     "3c71bf86f644": "farmwipy2",
     "3c71bf881410": "farmwipy3",
     "30aea42d1734": "farmwipy4",
+    "30aea44e7ed4": "farmwipy5",
 }
-SENSOR_STATION_ID = mac_address_to_station_id[MAC_ADDRESS]
+
+SENSOR_CORRECTIONS = {
+    "farmwipy1": {
+        "barometer_temperature": -6.5,
+        "humidity_temperature": -8.35,
+        "humidity_humidity": 0.0,
+    },
+    "farmwipy2": {
+        "barometer_temperature": 0.0,
+        "humidity_temperature": 0.0,
+        "humidity_humidity": 0.0,
+    },
+    "farmwipy3": {
+        "barometer_temperature": -2.3,
+        "humidity_temperature": -4.15,
+        "humidity_humidity": 0.0,
+    },
+    "farmwipy4": {
+        "barometer_temperature": -4.0,
+        "humidity_temperature": -5.0,
+        "humidity_humidity": 0.0,
+    },
+    "farmwipy5": {
+        "barometer_temperature": 0.0,
+        "humidity_temperature": 0.0,
+        "humidity_humidity": 0.0,
+    },
+}
+
+
+# Needs to be resolved here as SENSOR_STATION_ID used lower down
+MAC_ADDRESS = binascii.hexlify(machine.unique_id()).decode("utf-8")
+SENSOR_STATION_ID_UNKNOWN = MAC_ADDRESS
+SENSOR_STATION_ID = MAC_ADDRESS_TO_STATION_ID.get(
+    MAC_ADDRESS, SENSOR_STATION_ID_UNKNOWN
+)
+
 
 NETWORK_SSID = "LLS_BYOD"
 NETWORK_KEY = ""
@@ -33,23 +68,6 @@ NETWORK_KEY = ""
 
 MOCK = False
 SAMPLE_WINDOW = 60 * 10
-
-if SENSOR_STATION_ID == "farmwipy1":
-    BAROMETER_TEMPERATURE_CORRECTION = -6.5
-    HUMIDITY_TEMPERATURE_CORRECTION = -8.35
-elif SENSOR_STATION_ID == "farmwipy2":
-    BAROMETER_TEMPERATURE_CORRECTION = 0.0
-    HUMIDITY_TEMPERATURE_CORRECTION = 0.0
-elif SENSOR_STATION_ID == "farmwipy3":
-    BAROMETER_TEMPERATURE_CORRECTION = -2.3
-    HUMIDITY_TEMPERATURE_CORRECTION = -4.15
-elif SENSOR_STATION_ID == "farmwipy4":
-    BAROMETER_TEMPERATURE_CORRECTION = -4.0
-    HUMIDITY_TEMPERATURE_CORRECTION = -5.0
-else:
-    BAROMETER_TEMPERATURE_CORRECTION = 0.0
-    HUMIDITY_TEMPERATURE_CORRECTION = 0.0
-
 MEASUREMENT = "sensors"
 BUCKET = "cryptfarm"
 TOKEN = "scW9V68kenPTzEkGUAtky-7awOMuo71pPGnCJ3gEdJWNNFBrlvp5atHTSFttVY4rRj0796xBgkuaF_YkSQExBg=="
@@ -63,7 +81,6 @@ influx_schema = {
     "bucket": BUCKET,
 }
 sensor_influx_tags = {"station_id": SENSOR_STATION_ID}
-
 
 HAVE_SD = False
 HAVE_EXTERNAL_SENSORS = False
@@ -82,13 +99,13 @@ LED = {
     "red": 0xFF0000,
 }
 
-NETWORK_CONFIG_STR = """Network config:
-IP          : {0}
-Subnet mask : {1}
-Gateway     : {2}
-DNS server  : {3}
-Mac address : {4}
-Station ID  : {5}"""
+
+def sensor_correction(sensor):
+    try:
+        d = SENSOR_CORRECTIONS[SENSOR_STATION_ID]
+    except KeyError:
+        return 0.0
+    return d.get(sensor, 0.0)
 
 
 def reset_wlan(wlan=None):
@@ -118,7 +135,13 @@ def connect_wireless(wlan):
                 machine.idle()  # save power while waiting
             ip, subnet, gateway, dns = wlan.ifconfig()
             print(
-                NETWORK_CONFIG_STR.format(
+                """Network config:
+IP          : {0}
+Subnet mask : {1}
+Gateway     : {2}
+DNS server  : {3}
+Mac address : {4}
+Station ID  : {5}""".format(
                     ip, subnet, gateway, dns, MAC_ADDRESS, SENSOR_STATION_ID
                 )
             )
@@ -140,10 +163,11 @@ def internal_sensor_readings():
     return {
         "barometer_pressure": barometer.pressure(),
         "barometer_temperature": barometer.temperature()
-        + BAROMETER_TEMPERATURE_CORRECTION,
-        "humidity_humidity": humidity_sensor.humidity(),
+        + sensor_correction("barometer_temperature"),
+        "humidity_humidity": humidity_sensor.humidity()
+        + sensor_correction("humidity_humidity"),
         "humidity_temperature": humidity_sensor.temperature()
-        + HUMIDITY_TEMPERATURE_CORRECTION,
+        + sensor_correction("humidity_temperature"),
         "ambient_light_0": l0,
         "ambient_light_1": l1,
     }
