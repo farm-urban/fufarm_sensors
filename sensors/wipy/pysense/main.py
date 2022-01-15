@@ -35,17 +35,17 @@ MOCK = False
 SAMPLE_WINDOW = 60 * 10
 
 if SENSOR_STATION_ID == "farmwipy1":
-    BAROMETER_TEMPERATURE_CORRECTION = -5.9
-    HUMIDITY_TEMPERATURE_CORRECTION = -7.75
+    BAROMETER_TEMPERATURE_CORRECTION = -6.5
+    HUMIDITY_TEMPERATURE_CORRECTION = -8.35
 elif SENSOR_STATION_ID == "farmwipy2":
     BAROMETER_TEMPERATURE_CORRECTION = 0.0
     HUMIDITY_TEMPERATURE_CORRECTION = 0.0
 elif SENSOR_STATION_ID == "farmwipy3":
-    BAROMETER_TEMPERATURE_CORRECTION = -5.3
-    HUMIDITY_TEMPERATURE_CORRECTION = -7.15
-elif SENSOR_STATION_ID == "farmwipy3":
-    BAROMETER_TEMPERATURE_CORRECTION = 0.0
-    HUMIDITY_TEMPERATURE_CORRECTION = 0.0
+    BAROMETER_TEMPERATURE_CORRECTION = -2.3
+    HUMIDITY_TEMPERATURE_CORRECTION = -4.15
+elif SENSOR_STATION_ID == "farmwipy4":
+    BAROMETER_TEMPERATURE_CORRECTION = -4.0
+    HUMIDITY_TEMPERATURE_CORRECTION = -5.0
 else:
     BAROMETER_TEMPERATURE_CORRECTION = 0.0
     HUMIDITY_TEMPERATURE_CORRECTION = 0.0
@@ -86,7 +86,9 @@ NETWORK_CONFIG_STR = """Network config:
 IP          : {0}
 Subnet mask : {1}
 Gateway     : {2}
-DNS server  : {3}"""
+DNS server  : {3}
+Mac address : {4}
+Station ID  : {5}"""
 
 
 def reset_wlan(wlan=None):
@@ -114,7 +116,12 @@ def connect_wireless(wlan):
             wlan.connect(net.ssid, auth=(net.sec, NETWORK_KEY), timeout=5000)
             while not wlan.isconnected():
                 machine.idle()  # save power while waiting
-            print(NETWORK_CONFIG_STR.format(*wlan.ifconfig()))
+            ip, subnet, gateway, dns = wlan.ifconfig()
+            print(
+                NETWORK_CONFIG_STR.format(
+                    ip, subnet, gateway, dns, MAC_ADDRESS, SENSOR_STATION_ID
+                )
+            )
     return wlan.isconnected()
 
 
