@@ -24,29 +24,29 @@ MAC_ADDRESS_TO_STATION_ID = {
 
 SENSOR_CORRECTIONS = {
     "farmwipy1": {
-        "barometer_temperature": -6.5,
-        "humidity_temperature": -8.35,
-        "humidity_humidity": -20.3,
+        "barometer_temperature": -6.5,  # -6.5
+        "humidity_temperature": -8.35,  # -8.35
+        "humidity_humidity": -20.3,  # -20.3
     },
     "farmwipy2": {
-        "barometer_temperature": -6.3,
-        "humidity_temperature": -4.5,
-        "humidity_humidity": 7.0,
+        "barometer_temperature": -4.7,  # -6.3
+        "humidity_temperature": -6.0,  # -4.5
+        "humidity_humidity": 7.0,  # 7.0
     },
     "farmwipy3": {
-        "barometer_temperature": -2.3,
-        "humidity_temperature": -4.15,
-        "humidity_humidity": 1.5,
+        "barometer_temperature": -2.6,  # -2.3
+        "humidity_temperature": -4.35,  # -4.15
+        "humidity_humidity": 1.5,  # 1.5
     },
     "farmwipy4": {
-        "barometer_temperature": -1.0,
-        "humidity_temperature": -2.8,
-        "humidity_humidity": -34.0,
+        "barometer_temperature": -2.7,  # -1.0
+        "humidity_temperature": -4.2,  # -2.8
+        "humidity_humidity": -30.0,  # -34.0
     },
     "farmwipy5": {
-        "barometer_temperature": 0.0,
-        "humidity_temperature": 0.0,
-        "humidity_humidity": 0.0,
+        "barometer_temperature": -0.8,  # 0.0
+        "humidity_temperature": -2.7,  # 0.0
+        "humidity_humidity": -46.0,  # 0.0
     },
 }
 
