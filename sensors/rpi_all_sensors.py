@@ -158,7 +158,7 @@ MEASUREMENT_SENSOR = "sensors"
 BUCKET = "cryptfarm"
 TOKEN = open("TOKEN").readline().strip()
 ORG = "Farm Urban"
-INFLUX_URL = "http://farmuaa1.vpn.farmurban.co.uk:8086"
+INFLUX_URL = "http://farmuaa1:8086"
 influx_schema = {
     "endpoint": INFLUX_URL,
     "org": ORG,
