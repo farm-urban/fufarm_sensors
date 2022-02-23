@@ -6,8 +6,8 @@
 #include "DFRobot_PH.h"
 
 // Time in milliseconds - 5 minutes = 1000 * 60 * 5 = 300000
-//#define SAMPLE_WINDOW 5000
 #define SAMPLE_WINDOW 300000
+//#define SAMPLE_WINDOW 5000
 
 // Analog Inputs
 int lightPin = A0;
@@ -17,8 +17,8 @@ int phPin = A3;
 
 // Digital Inputs
 int dhtPin = 2; // Temp and Humidity
-int DS18S20_Pin = 3; // Wet temperature
-int SEN0217_Pin = 4; // Flow sensor
+int SEN0217_Pin = 3; // Flow sensor - only pins 0, 1, 2, 3, 7 https://www.arduino.cc/reference/en/language/functions/external-interrupts/attachinterrupt/
+int DS18S20_Pin = 4; // Wet temperature
 
 // Data collecting strucutures
 DHTesp dht; // Temperature and Humidity
@@ -133,6 +133,7 @@ void setup() {
     pinMode(LED_BUILTIN, OUTPUT);
     Serial.begin(9600);
     dht.setup(dhtPin, DHTesp::DHT22);
+    // https://www.arduino.cc/reference/en/language/functions/analog-io/analogreference/
     analogReference(DEFAULT); // Set the default voltage of the reference voltage
     attachInterrupt(digitalPinToInterrupt(SEN0217_Pin), flowPulse, RISING);
     pulseCount = 0;
