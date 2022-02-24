@@ -57,10 +57,10 @@ int phPin = A3;
 // Digital Inputs
 // Always need HAVE_TEMP_HUMIDITY or else need to edit the line protocol to not get errors
 int dhtPin = 2; // Temp and Humidity
-// #define HAVE_TEMP_WET
-int DS18S20_Pin = 3; // Wet temperature
 // #define HAVE_FLOW
-int SEN0217_Pin = 4; // Flow sensor
+int SEN0217_Pin = 3; // Flow sensor - only certain pins https://www.arduino.cc/reference/en/language/functions/external-interrupts/attachinterrupt/
+// #define HAVE_TEMP_WET
+int DS18S20_Pin = 4; // Wet temperature
 
 // Data collecting structures
 DHTesp dht;              // Temperature and Humidity
