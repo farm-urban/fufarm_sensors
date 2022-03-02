@@ -25,13 +25,17 @@ char pass[] = "v8fD53Rs";
 
 // InfluxDB v2 server url, e.g. https://eu-central-1-1.aws.cloud2.influxdata.com (Use: InfluxDB UI -> Load Data -> Client Libraries)
 // #define INFLUXDB_SSL // Uncomment to connect via SSL on port 443
+// #define INFLUXDB_SERVER "us-central1-1.gcp.cloud2.influxdata.com"
 #define INFLUXDB_SERVER "farmuaa1.farmurban.co.uk"
 #define INFLUXDB_PORT 8086
 // InfluxDB v2 server or cloud API authentication token (Use: InfluxDB UI -> Data -> Tokens -> <select token>)
+// #define INFLUXDB_TOKEN "lozLfHCYYMEXFPtc7RdZnZ2Fk6zyjv3NjDXJRmcVDO6IvQQ_y5MKAJ7iNA36GfAFojzAqT84DaPDS119wGju05IgQ=="
 #define INFLUXDB_TOKEN "jmhtscW9V68kenPTzEkGUAtky-7awOMuo71pPGnCJ3gEdJWNNFBrlvp5atHTSFttVY4rRj0796xBgkuaF_YkSQExBg=="
 // InfluxDB v2 organization id (Use: InfluxDB UI -> User -> About -> Common Ids )
+//#define INFLUXDB_ORG "laurence@farmurban.co.uk"
 #define INFLUXDB_ORG "Farm Urban"
 // InfluxDB v2 bucket name (Use: InfluxDB UI ->  Data -> Buckets)
+// #define INFLUXDB_BUCKET "laurence Tents data"
 #define INFLUXDB_BUCKET "cryptfarm"
 
 #define INFLUXDB_MEASUREMENT "sensors"
