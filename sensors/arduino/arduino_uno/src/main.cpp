@@ -7,11 +7,11 @@
 #include "DFRobot_EC.h"
 #include "DFRobot_PH.h"
 
-// #define MOCK;
-char ssid[] = "LLS_BYOD";
-char pass[] = "";
-// char ssid[] = "Farm Urban";
-// char pass[] = "v8fD53Rs";
+// #define MOCK ;
+// char ssid[] = "LLS_BYOD";
+// char pass[] = "";
+char ssid[] = "Farm Urban";
+char pass[] = "v8fD53Rs";
 
 // Will be different depending on the reference voltage
 #define VOLTAGE_CONVERSION 5000;
@@ -45,7 +45,7 @@ char pass[] = "";
 #endif
 
 // Analog Inputs
-// #define HAVE_LIGHT
+#define HAVE_LIGHT
 int lightPin = A0;
 #define HAVE_CO2
 int co2Pin = A1;
@@ -59,7 +59,7 @@ int phPin = A3;
 int dhtPin = 2; // Temp and Humidity
 // #define HAVE_FLOW
 int SEN0217_Pin = 3; // Flow sensor - only certain pins https://www.arduino.cc/reference/en/language/functions/external-interrupts/attachinterrupt/
-// #define HAVE_TEMP_WET
+#define HAVE_TEMP_WET
 int DS18S20_Pin = 4; // Wet temperature
 
 // Data collecting structures
@@ -359,7 +359,7 @@ String createLineProtocol(int light, float tempair, float humidity, float flow, 
   lineProtocol += co2;
 #endif
 #ifdef HAVE_TEMP_WET
-  lineProtocol += "tempwet=";
+  lineProtocol += ",tempwet=";
   lineProtocol += String(tempwet, 2);
 #endif
 #ifdef HAVE_EC
