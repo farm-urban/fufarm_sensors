@@ -246,7 +246,7 @@ void connectToWifi()
     wifiStatus = WiFi.begin(ssid, pass);
     delay(10000);
   }
-  Serial.print("You're connected to the network");
+  Serial.println("You're connected to the network");
   printCurrentNet();
   printWifiData();
 #endif
@@ -295,7 +295,8 @@ int sendData(String data)
   influxdb_post_url += urlEncode(INFLUXDB_BUCKET);
 
   // if you get a connection, report back via serial:
-
+  Serial.print("Attempting to connect to: ");
+  Serial.println(INFLUXDB_SERVER);
 #ifdef INFLUXDB_SSL
   if (wifiClient.connectSSL(INFLUXDB_SERVER, 443))
 #else
@@ -430,6 +431,7 @@ void loop()
   float ec = getEC(ecPin, tempwet);
   float ph = getPH(phPin, tempwet);
   String lineProtocol = createLineProtocol(light, tempair, humidity, flow, co2, tempwet, ec, ph);
+  Serial.print("Created line protocol: ");
   Serial.println(lineProtocol);
 #ifndef MOCK
   int ret = sendData(lineProtocol);
