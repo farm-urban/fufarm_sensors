@@ -8,10 +8,12 @@
 #include "DFRobot_PH.h"
 
 // #define MOCK ;
-// char ssid[] = "LLS_BYOD";
-// char pass[] = "";
-char ssid[] = "Farm Urban";
-char pass[] = "v8fD53Rs";
+char ssid[] = "LLS_BYOD";
+char pass[] = "";
+// char ssid[] = "PLUSNET-K9PM";
+// char pass[] = "925c9c64a5";
+// char ssid[] = "Farm Urban";
+// char pass[] = "v8fD53Rs";
 
 // Will be different depending on the reference voltage
 #define VOLTAGE_CONVERSION 5000;
@@ -30,13 +32,15 @@ char pass[] = "v8fD53Rs";
 #define INFLUXDB_PORT 8086
 // InfluxDB v2 server or cloud API authentication token (Use: InfluxDB UI -> Data -> Tokens -> <select token>)
 // #define INFLUXDB_TOKEN "lozLfHCYYMEXFPtc7RdZnZ2Fk6zyjv3NjDXJRmcVDO6IvQQ_y5MKAJ7iNA36GfAFojzAqT84DaPDS119wGju05IgQ=="
-#define INFLUXDB_TOKEN "jmhtscW9V68kenPTzEkGUAtky-7awOMuo71pPGnCJ3gEdJWNNFBrlvp5atHTSFttVY4rRj0796xBgkuaF_YkSQExBg=="
+// #define INFLUXDB_TOKEN "jmhtscW9V68kenPTzEkGUAtky-7awOMuo71pPGnCJ3gEdJWNNFBrlvp5atHTSFttVY4rRj0796xBgkuaF_YkSQExBg=="
+#define INFLUXDB_TOKEN "jmhtmIA1iQHZV3WdPQQEbsi3IpVhp7b4sWlQ3rh8reV3Y-nAOLsCeixv0CZ2RETOTaERl4HhnAwqqNNAZN1fLZU_cA=="
 // InfluxDB v2 organization id (Use: InfluxDB UI -> User -> About -> Common Ids )
 //#define INFLUXDB_ORG "laurence@farmurban.co.uk"
 #define INFLUXDB_ORG "Farm Urban"
 // InfluxDB v2 bucket name (Use: InfluxDB UI ->  Data -> Buckets)
 // #define INFLUXDB_BUCKET "laurence Tents data"
-#define INFLUXDB_BUCKET "cryptfarm"
+// #define INFLUXDB_BUCKET "cryptfarm"
+#define INFLUXDB_BUCKET "testbucket"
 
 #define INFLUXDB_MEASUREMENT "sensors"
 #define INFLUXDB_STATION_ID "ard1"
@@ -236,8 +240,14 @@ void printWifiData()
 void connectToWifi()
 {
 #ifdef MOCK
-  Serial.println("Skipping Wifi Connect");
-#else
+  Serial.println("Skipping connectToWifi");
+  return;
+#endif
+  if (WiFi.status() == WL_CONNECTED)
+  {
+    Serial.println("connectToWifi - already connected");
+    return;
+  }
   wifiStatus = WL_IDLE_STATUS;
   while (wifiStatus != WL_CONNECTED)
   {
@@ -249,7 +259,17 @@ void connectToWifi()
   Serial.println("You're connected to the network");
   printCurrentNet();
   printWifiData();
+}
+
+void shutdownWifi()
+{
+#ifdef MOCK
+  Serial.println("Skipping shutdownWifi");
+  return;
 #endif
+  Serial.println("*** shutdownWifi ***");
+  WiFi.disconnect();
+  WiFi.end();
 }
 
 // From: https://github.com/tobiasschuerg/InfluxDB-Client-for-Arduino/blob/master/src/util/helpers.cpp
@@ -290,6 +310,10 @@ String urlEncode(const char *src)
 
 int sendData(String data)
 {
+#ifdef MOCK
+  Serial.println("Skipping sendData");
+  return;
+#endif
   String influxdb_post_url = "/api/v2/write?org=" + urlEncode(INFLUXDB_ORG);
   influxdb_post_url += "&bucket=";
   influxdb_post_url += urlEncode(INFLUXDB_BUCKET);
@@ -335,6 +359,7 @@ int sendData(String data)
   else
   { // if not connected:
     Serial.println("connection failed");
+    wifiClient.stop();
     return -1;
   }
 }
@@ -415,12 +440,8 @@ void loop()
 {
   // Serial.println("Starting main loop");
   // digitalWrite(LED_BUILTIN, HIGH);
-#ifndef MOCK
-  if (WiFi.status() != WL_CONNECTED)
-  {
-    connectToWifi();
-  }
-#endif
+  connectToWifi();
+
   int light = getLight(lightPin);
   TempAndHumidity th = dht.getTempAndHumidity();
   float tempair = th.temperature;
@@ -433,14 +454,13 @@ void loop()
   String lineProtocol = createLineProtocol(light, tempair, humidity, flow, co2, tempwet, ec, ph);
   Serial.print("Created line protocol: ");
   Serial.println(lineProtocol);
-#ifndef MOCK
   int ret = sendData(lineProtocol);
-#endif // endif Mock
-
   //   // If no Wifi signal, try to reconnect it
   //  if ((WiFi.RSSI() == 0) && (wifiMulti.run() != WL_CONNECTED)) {
   //    Serial.println("Wifi connection lost");
   //  }
-
   delay(SAMPLE_WINDOW);
+
+  // Need to shutdown wifi due to bug in Wifi: https://github.com/arduino-libraries/WiFiNINA/issues/103 | https://github.com/arduino-libraries/WiFiNINA/issues/207
+  shutdownWifi();
 } // end loop
