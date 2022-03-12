@@ -459,8 +459,8 @@ void loop()
   //  if ((WiFi.RSSI() == 0) && (wifiMulti.run() != WL_CONNECTED)) {
   //    Serial.println("Wifi connection lost");
   //  }
-  delay(SAMPLE_WINDOW);
 
   // Need to shutdown wifi due to bug in Wifi: https://github.com/arduino-libraries/WiFiNINA/issues/103 | https://github.com/arduino-libraries/WiFiNINA/issues/207
   shutdownWifi();
+  delay(SAMPLE_WINDOW);
 } // end loop
