@@ -26,24 +26,23 @@ char pass[] = "";
  * */
 
 // InfluxDB v2 server url, e.g. https://eu-central-1-1.aws.cloud2.influxdata.com (Use: InfluxDB UI -> Load Data -> Client Libraries)
-// #define INFLUXDB_SSL // Uncomment to connect via SSL on port 443
-// #define INFLUXDB_SERVER "us-central1-1.gcp.cloud2.influxdata.com"
-#define INFLUXDB_SERVER "farmuaa1.farmurban.co.uk"
-#define INFLUXDB_PORT 8086
-// InfluxDB v2 server or cloud API authentication token (Use: InfluxDB UI -> Data -> Tokens -> <select token>)
-// #define INFLUXDB_TOKEN "lozLfHCYYMEXFPtc7RdZnZ2Fk6zyjv3NjDXJRmcVDO6IvQQ_y5MKAJ7iNA36GfAFojzAqT84DaPDS119wGju05IgQ=="
+#define INFLUXDB_SSL // Uncomment to connect via SSL on port 443
+#define INFLUXDB_SERVER "europe-west1-1.gcp.cloud2.influxdata.com"
+// #define INFLUXDB_SERVER "farmuaa1.farmurban.co.uk"
+// #define INFLUXDB_PORT 8086
+// InfluxDB v2 server or cloud API authentication token (Use: InfluxDB UI -> Load Data -> API Tokens -> <select token>)
+#define INFLUXDB_TOKEN "jmhtqC2iVoUIVgHmfr6nL6kLXeinh3PpC_duaoqbPO7HtSGW8RUyumq6X4v35nZz-73qco3f66P8pbTTRJ20DKsEoQ=="
 // #define INFLUXDB_TOKEN "jmhtscW9V68kenPTzEkGUAtky-7awOMuo71pPGnCJ3gEdJWNNFBrlvp5atHTSFttVY4rRj0796xBgkuaF_YkSQExBg=="
-#define INFLUXDB_TOKEN "jmhtmIA1iQHZV3WdPQQEbsi3IpVhp7b4sWlQ3rh8reV3Y-nAOLsCeixv0CZ2RETOTaERl4HhnAwqqNNAZN1fLZU_cA=="
+// #define INFLUXDB_TOKEN "jmhtmIA1iQHZV3WdPQQEbsi3IpVhp7b4sWlQ3rh8reV3Y-nAOLsCeixv0CZ2RETOTaERl4HhnAwqqNNAZN1fLZU_cA=="
 // InfluxDB v2 organization id (Use: InfluxDB UI -> User -> About -> Common Ids )
-//#define INFLUXDB_ORG "laurence@farmurban.co.uk"
-#define INFLUXDB_ORG "Farm Urban"
+#define INFLUXDB_ORG "s.bannon@liverpool.ac.uk"
+// #define INFLUXDB_ORG "Farm Urban"
 // InfluxDB v2 bucket name (Use: InfluxDB UI ->  Data -> Buckets)
-// #define INFLUXDB_BUCKET "laurence Tents data"
+#define INFLUXDB_BUCKET "UTC Experiment 1"
 // #define INFLUXDB_BUCKET "cryptfarm"
-#define INFLUXDB_BUCKET "testbucket"
 
 #define INFLUXDB_MEASUREMENT "sensors"
-#define INFLUXDB_STATION_ID "ard1"
+#define INFLUXDB_STATION_ID "sys2"
 
 #ifdef MOCK
 #define SAMPLE_WINDOW 5000
@@ -57,7 +56,7 @@ char pass[] = "";
 int lightPin = A0;
 #define HAVE_CO2
 int co2Pin = A1;
-// #define HAVE_EC
+#define HAVE_EC
 int ecPin = A2;
 // #define HAVE_PH
 int phPin = A3;
@@ -65,7 +64,7 @@ int phPin = A3;
 // Digital Inputs
 // Always need HAVE_TEMP_HUMIDITY or else need to edit the line protocol to not get errors
 int dhtPin = 2; // Temp and Humidity
-// #define HAVE_FLOW
+#define HAVE_FLOW
 int SEN0217_Pin = 3; // Flow sensor - only certain pins https://www.arduino.cc/reference/en/language/functions/external-interrupts/attachinterrupt/
 #define HAVE_TEMP_WET
 int DS18S20_Pin = 4; // Wet temperature
