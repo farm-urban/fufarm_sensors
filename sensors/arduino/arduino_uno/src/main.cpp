@@ -8,8 +8,8 @@
 #include "DFRobot_PH.h"
 
 // #define MOCK ;
-char ssid[] = "LLS_BYOD";
-char pass[] = "";
+char ssid[] = "FUsensors";
+char pass[] = "12345678";
 // char ssid[] = "PLUSNET-K9PM";
 // char pass[] = "925c9c64a5";
 // char ssid[] = "Farm Urban";
