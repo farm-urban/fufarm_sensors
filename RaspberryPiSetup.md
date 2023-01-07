@@ -488,7 +488,7 @@ EOF'
 sudo bash -c 'cat <<EOF > /etc/network/interfaces.d/ap
 allow-hotplug uap0
 auto uap0
-iface uap0 inet static
+iface uap0 inet static 
     address 192.168.4.1
     netmask 255.255.255.0
 EOF'
