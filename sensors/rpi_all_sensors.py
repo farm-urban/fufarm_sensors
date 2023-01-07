@@ -145,7 +145,7 @@ MOCK = False
 POLL_INTERVAL = 60 * 5
 HAVE_BLUELAB = False
 HAVE_MQTT = False
-DIRECT_SENSORS = True
+GPIO_SENSORS = True
 CONTROL_LIGHTS = False
 LOCAL_TIMESTAMP = True
 LOG_LEVEL = logging.DEBUG
@@ -191,7 +191,7 @@ if HAVE_MQTT:
 h2_data = []
 if CONTROL_LIGHTS:
     on_time, off_time = create_schedule_times(LIGHT_SCHEDULE)
-if DIRECT_SENSORS:
+if GPIO_SENSORS:
     gpio_sensors.setup_devices()
 if HAVE_MQTT:
     mqtt_client.loop_start()
@@ -222,7 +222,7 @@ while True:
     if data is None:
         # No data from dfrobot Arduino sensors
         data = {}
-    if DIRECT_SENSORS:
+    if GPIO_SENSORS:
         data["flow"] = gpio_sensors.flow_rate(POLL_INTERVAL)
         data["distance"] = gpio_sensors.distance_sensor.distance
 
