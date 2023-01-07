@@ -3,8 +3,8 @@ import logging
 import time
 
 # local imports
-import grove_sensors
-import influxdb
+from util import grove_sensors
+from util import influxdb
 
 
 SAMPLE_WINDOW = 60 * 5
