@@ -20,7 +20,7 @@ import paho.mqtt.client as mqtt
 # Local imports
 from bluelab_logs import bluelab_logs
 import influxdb
-import direct_sensors_rpi
+import sensors.gpio_sensors_rpi as gpio_sensors_rpi
 import dfrobot_sensors
 
 
@@ -192,7 +192,7 @@ h2_data = []
 if CONTROL_LIGHTS:
     on_time, off_time = create_schedule_times(LIGHT_SCHEDULE)
 if DIRECT_SENSORS:
-    direct_sensors_rpi.setup_devices()
+    gpio_sensors_rpi.setup_devices()
 if HAVE_MQTT:
     mqtt_client.loop_start()
 last_timestamp = datetime.datetime.now() - datetime.timedelta(seconds=POLL_INTERVAL)
@@ -213,7 +213,7 @@ while True:
         # mainly for debugging and checking purposes.
         sample_start = time.time()
         sample_end = sample_start + POLL_INTERVAL
-        direct_sensors_rpi.reset_flow_counter()
+        gpio_sensors_rpi.reset_flow_counter()
         while time.time() < sample_end:
             #  Need to loop so paddle can count rotations
             pass
@@ -223,8 +223,8 @@ while True:
         # No data from dfrobot Arduino sensors
         data = {}
     if DIRECT_SENSORS:
-        data["flow"] = direct_sensors_rpi.flow_rate(POLL_INTERVAL)
-        data["distance"] = direct_sensors_rpi.distance_sensor.distance
+        data["flow"] = gpio_sensors_rpi.flow_rate(POLL_INTERVAL)
+        data["distance"] = gpio_sensors_rpi.distance_sensor.distance
 
     # Send sensor data from dfrobot Arduino and direct sensors
     influxdb.send_data_to_influx(
