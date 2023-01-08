@@ -211,12 +211,9 @@ while True:
     if loopcount > 0:
         # We run the first set of readings immediately so we have data to send -
         # mainly for debugging and checking purposes.
-        sample_start = time.time()
-        sample_end = sample_start + POLL_INTERVAL
         gpio_sensors.reset_flow_counter()
-        while time.time() < sample_end:
-            #  Need to loop so paddle can count rotations
-            pass
+        # Need to pause so paddle can count rotations
+        time.sleep(POLL_INTERVAL)
 
     data = dfrobot_sensors.sensor_readings()
     if data is None:
