@@ -1,7 +1,8 @@
 #!/bin/bash
 export PATH=/opt/arduino-cli/bin:$PATH
 
-folder_name=$(basename $PWD)
+#folder_name=$(basename $PWD)
+folder_name=$PWD
 atty=/dev/ttyACM0
 
 arduino-cli compile --fqbn arduino:avr:leonardo $folder_name \

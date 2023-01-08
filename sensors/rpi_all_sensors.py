@@ -145,7 +145,7 @@ MOCK = False
 POLL_INTERVAL = 60 * 5
 HAVE_BLUELAB = False
 HAVE_MQTT = False
-GPIO_SENSORS = True
+GPIO_SENSORS = False
 CONTROL_LIGHTS = False
 LOCAL_TIMESTAMP = True
 LOG_LEVEL = logging.DEBUG
@@ -158,7 +158,7 @@ MEASUREMENT_SENSOR = "sensors"
 BUCKET = "cryptfarm"
 TOKEN = open("TOKEN").readline().strip()
 ORG = "Farm Urban"
-INFLUX_URL = "http://farmuaa1:8086"
+INFLUX_URL = "https://influx.farmurban.co.uk"
 influx_schema = {
     "endpoint": INFLUX_URL,
     "org": ORG,
