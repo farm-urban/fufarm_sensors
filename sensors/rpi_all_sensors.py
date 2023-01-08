@@ -222,15 +222,15 @@ while True:
     if GPIO_SENSORS:
         data["flow"] = gpio_sensors.flow_rate(POLL_INTERVAL)
         data["distance"] = gpio_sensors.distance_sensor.distance
-
-    # Send sensor data from dfrobot Arduino and direct sensors
-    influxdb.send_data_to_influx(
-        influx_schema,
-        MEASUREMENT_SENSOR,
-        sensor_influx_tags,
-        data,
-        local_timestamp=LOCAL_TIMESTAMP,
-    )
+    if data:
+        # Send sensor data from dfrobot Arduino and direct sensors
+        influxdb.send_data_to_influx(
+            influx_schema,
+            MEASUREMENT_SENSOR,
+            sensor_influx_tags,
+            data,
+            local_timestamp=LOCAL_TIMESTAMP,
+        )
 
     if HAVE_BLUELAB:
         bluelab_data = bluelab_logs.sample_bluelab_data(last_timestamp, POLL_INTERVAL)
