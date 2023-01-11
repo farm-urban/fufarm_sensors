@@ -145,7 +145,7 @@ MOCK = False
 POLL_INTERVAL = 60 * 5
 HAVE_BLUELAB = False
 HAVE_MQTT = False
-GPIO_SENSORS = True
+GPIO_SENSORS = False
 CONTROL_LIGHTS = False
 LOCAL_TIMESTAMP = True
 LOG_LEVEL = logging.DEBUG
@@ -158,7 +158,7 @@ MEASUREMENT_SENSOR = "sensors"
 BUCKET = "cryptfarm"
 TOKEN = open("TOKEN").readline().strip()
 ORG = "Farm Urban"
-INFLUX_URL = "http://farmuaa1:8086"
+INFLUX_URL = "https://influx.farmurban.co.uk"
 influx_schema = {
     "endpoint": INFLUX_URL,
     "org": ORG,
@@ -211,12 +211,9 @@ while True:
     if loopcount > 0:
         # We run the first set of readings immediately so we have data to send -
         # mainly for debugging and checking purposes.
-        sample_start = time.time()
-        sample_end = sample_start + POLL_INTERVAL
         gpio_sensors.reset_flow_counter()
-        while time.time() < sample_end:
-            #  Need to loop so paddle can count rotations
-            pass
+        # Need to pause so paddle can count rotations
+        time.sleep(POLL_INTERVAL)
 
     data = dfrobot_sensors.sensor_readings()
     if data is None:
@@ -225,15 +222,15 @@ while True:
     if GPIO_SENSORS:
         data["flow"] = gpio_sensors.flow_rate(POLL_INTERVAL)
         data["distance"] = gpio_sensors.distance_sensor.distance
-
-    # Send sensor data from dfrobot Arduino and direct sensors
-    influxdb.send_data_to_influx(
-        influx_schema,
-        MEASUREMENT_SENSOR,
-        sensor_influx_tags,
-        data,
-        local_timestamp=LOCAL_TIMESTAMP,
-    )
+    if data:
+        # Send sensor data from dfrobot Arduino and direct sensors
+        influxdb.send_data_to_influx(
+            influx_schema,
+            MEASUREMENT_SENSOR,
+            sensor_influx_tags,
+            data,
+            local_timestamp=LOCAL_TIMESTAMP,
+        )
 
     if HAVE_BLUELAB:
         bluelab_data = bluelab_logs.sample_bluelab_data(last_timestamp, POLL_INTERVAL)
