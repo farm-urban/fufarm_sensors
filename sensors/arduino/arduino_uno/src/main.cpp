@@ -1,4 +1,5 @@
 #include <SPI.h>
+// https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/wifi.html#wi-fi-reason-code
 #include <WiFiNINA.h>
 
 // Sensors
@@ -42,7 +43,7 @@ char pass[] = "12345678";
 // #define INFLUXDB_BUCKET "cryptfarm"
 
 #define INFLUXDB_MEASUREMENT "sensors"
-#define INFLUXDB_STATION_ID "sys2"
+#define INFLUXDB_STATION_ID "sys1"
 
 #ifdef MOCK
 #define SAMPLE_WINDOW 5000
@@ -223,6 +224,57 @@ void printCurrentNet()
   Serial.println();
 }
 
+void printEncryptionType(int thisType) {
+  // read the encryption type and print out the name:
+  switch (thisType) {
+    case ENC_TYPE_WEP:
+      Serial.println("WEP");
+      break;
+    case ENC_TYPE_TKIP:
+      Serial.println("WPA");
+      break;
+    case ENC_TYPE_CCMP:
+      Serial.println("WPA2");
+      break;
+    case ENC_TYPE_NONE:
+      Serial.println("None");
+      break;
+    case ENC_TYPE_AUTO:
+      Serial.println("Auto");
+      break;
+    case ENC_TYPE_UNKNOWN:
+    default:
+      Serial.println("Unknown");
+      break;
+  }
+}
+
+void listNetworks() {
+  // scan for nearby networks:
+  Serial.println("** Scan Networks **");
+  int numSsid = WiFi.scanNetworks();
+  if (numSsid == -1) {
+    Serial.println("Couldn't get a WiFi connection");
+    while (true);
+  }
+
+  // print the list of networks seen:
+  Serial.print("number of available networks:");
+  Serial.println(numSsid);
+
+  // print the network number and name for each network found:
+  for (int thisNet = 0; thisNet < numSsid; thisNet++) {
+    Serial.print(thisNet);
+    Serial.print(") ");
+    Serial.print(WiFi.SSID(thisNet));
+    Serial.print("\tSignal: ");
+    Serial.print(WiFi.RSSI(thisNet));
+    Serial.print(" dBm");
+    Serial.print("\tEncryption: ");
+    printEncryptionType(WiFi.encryptionType(thisNet));
+  }
+}
+
 void printWifiData()
 {
   // print your board's IP address:
@@ -254,6 +306,9 @@ void connectToWifi()
     Serial.println(ssid);
     wifiStatus = WiFi.begin(ssid, pass);
     delay(10000);
+    Serial.print("Failed to connect - reason code: ");
+    Serial.println(WiFi.reasonCode());
+    listNetworks();
   }
   Serial.println("You're connected to the network");
   printCurrentNet();
