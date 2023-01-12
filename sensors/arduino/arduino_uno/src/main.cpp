@@ -1,3 +1,9 @@
+/*
+ * Need to update the firmware on the Wifi Uno Rev2 and upload the SSL certificate for INFLUXDB_SERVER
+ * Getting this to work required multipole attempts and deleting the arduino.cc certificate. Instructions
+ * are available at: https://github.com/xcape-io/ArduinoProps/blob/master/help/WifiNinaFirmware.md
+ *
+ * */
 #include <SPI.h>
 // https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/wifi.html#wi-fi-reason-code
 #include <WiFiNINA.h>
@@ -9,22 +15,17 @@
 #include "DFRobot_PH.h"
 
 // #define MOCK ;
-char ssid[] = "FUsensors";
-char pass[] = "12345678";
-// char ssid[] = "PLUSNET-K9PM";
-// char pass[] = "925c9c64a5";
+// char ssid[] = "FUsensors";
+// char pass[] = "12345678";
+// char ssid[] = "PLUSNET-CFC9WG";
+// char pass[] = "G7UtKycGmxGYDq";
+char ssid[] = "jmht";
+char pass[] = "8c6766c9538b";
 // char ssid[] = "Farm Urban";
 // char pass[] = "v8fD53Rs";
 
 // Will be different depending on the reference voltage
 #define VOLTAGE_CONVERSION 5000;
-
-/*
- * Need to update the firmware on the Wifi Uno Rev2 and upload the SSL certificate for INFLUXDB_SERVER
- * Getting this to work required multipole attempts and deleting the arduino.cc certificate. Instructions
- * are available at: https://github.com/xcape-io/ArduinoProps/blob/master/help/WifiNinaFirmware.md
- *
- * */
 
 // InfluxDB v2 server url, e.g. https://eu-central-1-1.aws.cloud2.influxdata.com (Use: InfluxDB UI -> Load Data -> Client Libraries)
 #define INFLUXDB_SSL // Uncomment to connect via SSL on port 443
@@ -43,7 +44,7 @@ char pass[] = "12345678";
 // #define INFLUXDB_BUCKET "cryptfarm"
 
 #define INFLUXDB_MEASUREMENT "sensors"
-#define INFLUXDB_STATION_ID "sys1"
+#define INFLUXDB_STATION_ID "sysJ"
 
 #ifdef MOCK
 #define SAMPLE_WINDOW 5000
@@ -171,10 +172,10 @@ float getTempWet()
 
 float getFlow()
 /* From YF-S201 manual:
-    Pluse Characteristic:F=7Q(L/MIN).
-    2L/MIN=16HZ 4L/MIN=32.5HZ 6L/MIN=49.3HZ 8L/MIN=65.5HZ 10L/MIN=82HZ
-    sample_window is in milli seconds, so hz is pulseCount * 1000 / SAMPLE_WINDOW
- */
+   Pluse Characteristic:F=7Q(L/MIN).
+   2L/MIN=16HZ 4L/MIN=32.5HZ 6L/MIN=49.3HZ 8L/MIN=65.5HZ 10L/MIN=82HZ
+   sample_window is in milli seconds, so hz is pulseCount * 1000 / SAMPLE_WINDOW
+*/
 {
   float hertz = (float)(pulseCount * 1000.0) / SAMPLE_WINDOW;
   pulseCount = 0; // reset flow counter
@@ -205,23 +206,27 @@ void printMacAddress(byte mac[])
 
 void printCurrentNet()
 {
-  // print the SSID of the network you're attached to:
+  Serial.println("Currently connected to network");
   Serial.print("SSID: ");
   Serial.println(WiFi.SSID());
-  // print the MAC address of the router you're attached to:
   byte bssid[6];
   WiFi.BSSID(bssid);
   Serial.print("BSSID: ");
   printMacAddress(bssid);
-  // print the received signal strength:
   long rssi = WiFi.RSSI();
   Serial.print("signal strength (RSSI):");
   Serial.println(rssi);
-  // print the encryption type:
   byte encryption = WiFi.encryptionType();
   Serial.print("Encryption Type:");
   Serial.println(encryption, HEX);
   Serial.println();
+  IPAddress ip = WiFi.localIP();
+  Serial.print("IP Address: ");
+  Serial.println(ip);
+  byte mac[6];
+  WiFi.macAddress(mac);
+  Serial.print("MAC address: ");
+  printMacAddress(mac);
 }
 
 void printEncryptionType(int thisType) {
@@ -250,19 +255,14 @@ void printEncryptionType(int thisType) {
 }
 
 void listNetworks() {
-  // scan for nearby networks:
   Serial.println("** Scan Networks **");
   int numSsid = WiFi.scanNetworks();
   if (numSsid == -1) {
     Serial.println("Couldn't get a WiFi connection");
     while (true);
   }
-
-  // print the list of networks seen:
-  Serial.print("number of available networks:");
+  Serial.print("Number of available networks:");
   Serial.println(numSsid);
-
-  // print the network number and name for each network found:
   for (int thisNet = 0; thisNet < numSsid; thisNet++) {
     Serial.print(thisNet);
     Serial.print(") ");
@@ -273,19 +273,6 @@ void listNetworks() {
     Serial.print("\tEncryption: ");
     printEncryptionType(WiFi.encryptionType(thisNet));
   }
-}
-
-void printWifiData()
-{
-  // print your board's IP address:
-  IPAddress ip = WiFi.localIP();
-  Serial.print("IP Address: ");
-  Serial.println(ip);
-  // print your MAC address:
-  byte mac[6];
-  WiFi.macAddress(mac);
-  Serial.print("MAC address: ");
-  printMacAddress(mac);
 }
 
 void connectToWifi()
@@ -300,19 +287,25 @@ void connectToWifi()
     return;
   }
   wifiStatus = WL_IDLE_STATUS;
+  int attempts = 0;
   while (wifiStatus != WL_CONNECTED)
   {
+    listNetworks(); // Printing this after connecting to the Wifi causes the client connection to fail. WTAF.
+    Serial.println();
+    if (attempts > 0){
+      Serial.print("Failed to connect on attempt:");
+      Serial.print(attempts);
+      Serial.print(" - reason:");
+      Serial.println(WiFi.reasonCode());
+      Serial.println();
+    }
     Serial.print("Attempting to connect to WPA SSID: ");
     Serial.println(ssid);
     wifiStatus = WiFi.begin(ssid, pass);
     delay(10000);
-    Serial.print("Failed to connect - reason code: ");
-    Serial.println(WiFi.reasonCode());
-    listNetworks();
+    attempts++;
   }
-  Serial.println("You're connected to the network");
   printCurrentNet();
-  printWifiData();
 }
 
 void shutdownWifi()
@@ -362,17 +355,45 @@ String urlEncode(const char *src)
   return ret;
 }
 
+int postData(String data){
+  String url = "/api/v2/write?org=" + urlEncode(INFLUXDB_ORG);
+  url += "&bucket=";
+  url += urlEncode(INFLUXDB_BUCKET);
+  wifiClient.println("POST " + url + " HTTP/1.1");
+  wifiClient.println("Host: " + String(INFLUXDB_SERVER));
+  wifiClient.println("Content-Type: text/plain");
+  wifiClient.println("Authorization: Token " + String(INFLUXDB_TOKEN));
+  wifiClient.println("Connection: close");
+  wifiClient.print("Content-Length: ");
+  wifiClient.println(data.length());
+  wifiClient.println();   // end HTTP header
+  wifiClient.print(data); // send HTTP body
+
+  // Debug return values
+  delay(2000); // Need to wait for response to come back - not sure of optimal time
+  Serial.println("<Http Response>");
+  while (wifiClient.available())
+  {
+    // read an incoming byte from the server and print it to serial monitor:
+    char c = wifiClient.read();
+    Serial.print(c);
+  }
+  Serial.println("</Http Response>");
+
+  if (wifiClient.connected())
+  {
+    wifiClient.stop();
+  }
+  Serial.println("disconnected");
+  return 0;
+}
+
 int sendData(String data)
 {
 #ifdef MOCK
   Serial.println("Skipping sendData");
   return;
 #endif
-  String influxdb_post_url = "/api/v2/write?org=" + urlEncode(INFLUXDB_ORG);
-  influxdb_post_url += "&bucket=";
-  influxdb_post_url += urlEncode(INFLUXDB_BUCKET);
-
-  // if you get a connection, report back via serial:
   Serial.print("Attempting to connect to: ");
   Serial.println(INFLUXDB_SERVER);
 #ifdef INFLUXDB_SSL
@@ -382,36 +403,8 @@ int sendData(String data)
 #endif
   {
     Serial.println("connected");
-    wifiClient.println("POST " + influxdb_post_url + " HTTP/1.1");
-    wifiClient.println("Host: " + String(INFLUXDB_SERVER));
-    wifiClient.println("Content-Type: text/plain");
-    wifiClient.println("Authorization: Token " + String(INFLUXDB_TOKEN));
-    wifiClient.println("Connection: close");
-    wifiClient.print("Content-Length: ");
-    wifiClient.println(data.length());
-    wifiClient.println();   // end HTTP header
-    wifiClient.print(data); // send HTTP body
-
-    // Debug return values
-    delay(2000); // Need to wait for response to come back - not sure of optimal time
-    Serial.println("<Http Response>");
-    while (wifiClient.available())
-    {
-      // read an incoming byte from the server and print it to serial monitor:
-      char c = wifiClient.read();
-      Serial.print(c);
-    }
-    Serial.println("</Http Response>");
-
-    if (wifiClient.connected())
-    {
-      wifiClient.stop();
-    }
-    Serial.println("disconnected");
-    return 0;
-  }
-  else
-  { // if not connected:
+    postData(data);
+  } else { // if not connected:
     Serial.println("connection failed");
     wifiClient.stop();
     return -1;
@@ -480,7 +473,6 @@ void setup()
     while (true)
       ; // don't continue
   }
-
   String fv = WiFi.firmwareVersion();
   if (fv < WIFI_FIRMWARE_LATEST_VERSION)
   {
