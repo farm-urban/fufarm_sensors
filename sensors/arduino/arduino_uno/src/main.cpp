@@ -15,12 +15,14 @@
 #include "DFRobot_PH.h"
 
 // #define MOCK ;
-// char ssid[] = "FUsensors";
-// char pass[] = "12345678";
+char ssid[] = "FUsensors";
+char pass[] = "12345678";
 // char ssid[] = "PLUSNET-CFC9WG";
 // char pass[] = "G7UtKycGmxGYDq";
-char ssid[] = "jmht";
-char pass[] = "8c6766c9538b";
+// char ssid[] = "jmht";
+// char pass[] = "8c6766c9538b";
+// char ssid[] = "VodafoneConnect86275858";
+// char pass[] = "8bpfa84mvmtpulm";
 // char ssid[] = "Farm Urban";
 // char pass[] = "v8fD53Rs";
 
@@ -33,7 +35,7 @@ char pass[] = "8c6766c9538b";
 // #define INFLUXDB_SERVER "farmuaa1.farmurban.co.uk"
 // #define INFLUXDB_PORT 8086
 // InfluxDB v2 server or cloud API authentication token (Use: InfluxDB UI -> Load Data -> API Tokens -> <select token>)
-#define INFLUXDB_TOKEN "jmhtqC2iVoUIVgHmfr6nL6kLXeinh3PpC_duaoqbPO7HtSGW8RUyumq6X4v35nZz-73qco3f66P8pbTTRJ20DKsEoQ=="
+#define INFLUXDB_TOKEN "JMHTqC2iVoUIVgHmfr6nL6kLXeinh3PpC_duaoqbPO7HtSGW8RUyumq6X4v35nZz-73qco3f66P8pbTTRJ20DKsEoQ=="
 // #define INFLUXDB_TOKEN "jmhtscW9V68kenPTzEkGUAtky-7awOMuo71pPGnCJ3gEdJWNNFBrlvp5atHTSFttVY4rRj0796xBgkuaF_YkSQExBg=="
 // #define INFLUXDB_TOKEN "jmhtmIA1iQHZV3WdPQQEbsi3IpVhp7b4sWlQ3rh8reV3Y-nAOLsCeixv0CZ2RETOTaERl4HhnAwqqNNAZN1fLZU_cA=="
 // InfluxDB v2 organization id (Use: InfluxDB UI -> User -> About -> Common Ids )
@@ -44,7 +46,7 @@ char pass[] = "8c6766c9538b";
 // #define INFLUXDB_BUCKET "cryptfarm"
 
 #define INFLUXDB_MEASUREMENT "sensors"
-#define INFLUXDB_STATION_ID "sysJ"
+#define INFLUXDB_STATION_ID "sys2"
 
 #ifdef MOCK
 #define SAMPLE_WINDOW 5000
@@ -175,7 +177,7 @@ float getFlow()
    Pluse Characteristic:F=7Q(L/MIN).
    2L/MIN=16HZ 4L/MIN=32.5HZ 6L/MIN=49.3HZ 8L/MIN=65.5HZ 10L/MIN=82HZ
    sample_window is in milli seconds, so hz is pulseCount * 1000 / SAMPLE_WINDOW
-*/
+ */
 {
   float hertz = (float)(pulseCount * 1000.0) / SAMPLE_WINDOW;
   pulseCount = 0; // reset flow counter
@@ -261,7 +263,7 @@ void listNetworks() {
     Serial.println("Couldn't get a WiFi connection");
     while (true);
   }
-  Serial.print("Number of available networks:");
+  Serial.print("Number of available networks: ");
   Serial.println(numSsid);
   for (int thisNet = 0; thisNet < numSsid; thisNet++) {
     Serial.print(thisNet);
@@ -424,7 +426,7 @@ String createLineProtocol(int light, float tempair, float humidity, float flow, 
   lineProtocol += ",humidity=";
   lineProtocol += String(humidity, 2);
 #ifdef HAVE_LIGHT
-  lineProtocol += ",light="; // space first to separate fields
+  lineProtocol += ",light=";
   lineProtocol += light;
 #endif
 #ifdef HAVE_FLOW
