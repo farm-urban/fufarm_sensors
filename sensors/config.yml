@@ -1,0 +1,34 @@
+APP:
+  mock: False
+  log_level: 'DEBUG'
+  poll_interval: 60 * 5
+  have_bluelab: False
+  gpio_sensors: False
+  local_timestamp: True
+  control_lights: False
+  light_schedule: ("06:00", 16)
+
+INFLUX:
+  station_id: "rpi"
+  measurement: "sensors"
+  bucket: "cryptfarm"
+  org: "Farm Urban"
+  url: "https://influx.farmurban.co.uk"
+
+MQTT:
+  active: False
+  measurement: "energy"
+  # mqtt_to_stationid: { 'FU_System_2': 'Propagation'}
+  to_stationid: {}
+  subscribe_topics: [
+      "tele/FU_Fans/SENSOR",
+      "tele/FU_System_1/SENSOR",
+      "tele/FU_System_2/SENSOR",
+      "h2Pwr/STATUS",
+  ]
+
+BLUELAB:
+  available: True
+  measurement: "bluelab"
+  tag_to_stationid: {"52rf": "sys1", "4q3f": "sys2"}
+

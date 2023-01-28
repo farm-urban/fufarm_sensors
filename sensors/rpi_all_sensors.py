@@ -14,6 +14,7 @@ import json
 import requests
 import serial
 import time
+import yaml
 import paho.mqtt.client as mqtt
 
 
@@ -23,6 +24,27 @@ from util import influxdb
 from util import gpio_sensors
 from util import dfrobot_sensors
 
+class obj(object):
+    def __init__(self, d):
+        for k, v in d.items():
+            if isinstance(k, (list, tuple)):
+                setattr(self, k, [obj(x) if isinstance(x, dict) else x for x in v])
+            else:
+                setattr(self, k, obj(v) if isinstance(v, dict) else v)
+
+    def __repr__(self):
+        return '<%s>' % str('\n '.join('%s : %s' % (k, repr(v)) for (k, v) in self.__dict__.items())) 
+
+def process_config(file_path):
+    with open(file_path, "r") as f:
+        yamls = yaml.safe_load(f)
+    config = obj(yamls)
+
+    if not hasattr(logging, config.APP.log_level):
+        raise AttributeError(f"Unknown log_level: {config.APP.log_level}")
+
+    config.APP.poll_interval = eval(config.APP.poll_interval)
+    return config
 
 def setup_mqtt(influx_schema, measurement, on_mqtt_message):
     ## Setup MQTT
@@ -34,7 +56,7 @@ def setup_mqtt(influx_schema, measurement, on_mqtt_message):
     client.connect("localhost", port=1883)
 
     # Add different plugs
-    for topic in MQTT_SUBSCRIBE_TOPICS:
+    for topic in CONFIG.MQTT.subscribe_topics:
         client.subscribe(topic)
     client.on_message = on_mqtt_message
     return client
@@ -75,8 +97,8 @@ def on_mqtt_message(client, userdata, message):
     measurement = userdata["measurement"]
 
     station_id = message.topic.split("/")[1]
-    if station_id in MQTT_TO_STATIONID.keys():
-        station_id = MQTT_TO_STATIONID[station_id]
+    if station_id in CONFIG.MQTT.to_stationid.keys():
+        station_id = CONFIG.MQTT.to_stationid[station_id]
     tags = {"station_id": station_id}
 
     fields = data["ENERGY"]
@@ -84,7 +106,7 @@ def on_mqtt_message(client, userdata, message):
         fields["TotalStartTime"], "%Y-%m-%dT%H:%M:%S"
     ).timestamp()
     influxdb.send_data_to_influx(
-        influx_schema, measurement, tags, fields, local_timestamp=LOCAL_TIMESTAMP
+        influx_schema, measurement, tags, fields, local_timestamp=CONFIG.APP.local_timestamp
     )
 
 
@@ -140,62 +162,29 @@ def manage_lights(on_time, off_time, mqtt_client=None):
         pass
     return on_time, off_time
 
-
-MOCK = False
-POLL_INTERVAL = 60 * 5
-HAVE_BLUELAB = False
-HAVE_MQTT = False
-GPIO_SENSORS = False
-CONTROL_LIGHTS = False
-LOCAL_TIMESTAMP = True
-LOG_LEVEL = logging.DEBUG
-
-
-# Influxdb Configuration
-influxdb.MOCK = MOCK
-SENSOR_STATION_ID = "rpi"
-MEASUREMENT_SENSOR = "sensors"
-BUCKET = "cryptfarm"
-TOKEN = open("TOKEN").readline().strip()
-ORG = "Farm Urban"
-INFLUX_URL = "https://influx.farmurban.co.uk"
+CONFIG = process_config('config.yml')
 influx_schema = {
-    "endpoint": INFLUX_URL,
-    "org": ORG,
-    "token": TOKEN,
-    "bucket": BUCKET,
+    "endpoint": CONFIG.INFLUX.influx_url,
+    "org": CONFIG.INFLUX.org,
+    "token": CONFIG.INFLUX.token,
+    "bucket": CONFIG.INFLUX.bucket,
 }
-sensor_influx_tags = {"station_id": SENSOR_STATION_ID}
-
-# MQTT Data
-MEASUREMENT_MQTT = "energy"
-MEASUREMENT_BLUELAB = "bluelab"
-# MQTT_TO_STATIONID = { 'FU_System_2': 'Propagation'}
-MQTT_TO_STATIONID = {}
-MQTT_SUBSCRIBE_TOPICS = [
-    "tele/FU_Fans/SENSOR",
-    "tele/FU_System_1/SENSOR",
-    "tele/FU_System_2/SENSOR",
-    "h2Pwr/STATUS",
-]
-BLUELAB_TAG_TO_STATIONID = {"52rf": "sys1", "4q3f": "sys2"}
-LIGHT_SCHEDULE = ("06:00", 16)
-
+sensor_influx_tags = {"station_id": CONFIG.INFLUX.station_id}
 
 # Logging
-logging.basicConfig(level=LOG_LEVEL, format="%(asctime)s [rpi2]: %(message)s")
+logging.basicConfig(level=CONFIG.APP.log_level, format="%(asctime)s [rpi2]: %(message)s")
 logger = logging.getLogger()
-if HAVE_MQTT:
-    mqtt_client = setup_mqtt(influx_schema, MEASUREMENT_MQTT, on_mqtt_message)
+if CONFIG.MQTT.available:
+    mqtt_client = setup_mqtt(influx_schema, CONFIG.MQTT.measurement, on_mqtt_message)
 
 h2_data = []
-if CONTROL_LIGHTS:
-    on_time, off_time = create_schedule_times(LIGHT_SCHEDULE)
-if GPIO_SENSORS:
+if CONFIG.APP.control_lights:
+    on_time, off_time = create_schedule_times(CONFIG.APP.light_schedule)
+if CONFIG.APP.gpio_sensors:
     gpio_sensors.setup_devices()
-if HAVE_MQTT:
+if CONFIG.MQTT.available:
     mqtt_client.loop_start()
-last_timestamp = datetime.datetime.now() - datetime.timedelta(seconds=POLL_INTERVAL)
+last_timestamp = datetime.datetime.now() - datetime.timedelta(seconds=CONFIG.APP.poll_interval)
 logger.info(
     f"\n\n### Sensor service starting loop at: {datetime.datetime.strftime(datetime.datetime.now(),'%d-%m-%Y %H:%M:%S')} ###\n\n"
 )
@@ -205,7 +194,7 @@ while True:
     # if not mqtt_client.is_connected():
     #    logger.info("mqtt_client reconnecting")
     #    mqtt_client.reconnect()
-    if CONTROL_LIGHTS:
+    if CONFIG.APP.control_lights:
         on_time, off_time = manage_lights(on_time, off_time, mqtt_client)
 
     if loopcount > 0:
@@ -213,35 +202,35 @@ while True:
         # mainly for debugging and checking purposes.
         gpio_sensors.reset_flow_counter()
         # Need to pause so paddle can count rotations
-        time.sleep(POLL_INTERVAL)
+        time.sleep(CONFIG.APP.poll_interval)
 
     data = dfrobot_sensors.sensor_readings()
     if data is None:
         # No data from dfrobot Arduino sensors
         data = {}
-    if GPIO_SENSORS:
-        data["flow"] = gpio_sensors.flow_rate(POLL_INTERVAL)
+    if CONFIG.APP.gpio_sensors:
+        data["flow"] = gpio_sensors.flow_rate(CONFIG.APP.poll_interval)
         data["distance"] = gpio_sensors.distance_sensor.distance
     if data:
         # Send sensor data from dfrobot Arduino and direct sensors
         influxdb.send_data_to_influx(
             influx_schema,
-            MEASUREMENT_SENSOR,
+            CONFIG.INFLUX.measurement,
             sensor_influx_tags,
             data,
-            local_timestamp=LOCAL_TIMESTAMP,
+            local_timestamp=CONFIG.APP.local_timestamp,
         )
 
-    if HAVE_BLUELAB:
-        bluelab_data = bluelab_logs.sample_bluelab_data(last_timestamp, POLL_INTERVAL)
+    if CONFIG.BLUELAB.available:
+        bluelab_data = bluelab_logs.sample_bluelab_data(last_timestamp, CONFIG.APP.poll_interval)
         if bluelab_data is not None and len(bluelab_data) > 0:
             for d in bluelab_data:
                 #  ['tag', 'timestamp', 'ec', 'ph', 'temp']
-                tags = {"station_id": BLUELAB_TAG_TO_STATIONID[d.tag]}
+                tags = {"station_id": CONFIG.BLUELAB.tag_to_stationid[d.tag]}
                 fields = {"cond": d.ec, "ph": d.ph, "temp": d.temp}
                 influxdb.send_data_to_influx(
                     influx_schema,
-                    MEASUREMENT_BLUELAB,
+                    CONFIG.BLUELAB.measurement,
                     tags,
                     fields,
                     timestamp=d.timestamp,
