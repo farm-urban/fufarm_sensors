@@ -40,10 +40,13 @@ def process_config(file_path):
         yamls = yaml.safe_load(f)
     config = obj(yamls)
 
+    # Handle individual configuration variables
     if not hasattr(logging, config.APP.log_level):
         raise AttributeError(f"Unknown log_level: {config.APP.log_level}")
 
     config.APP.poll_interval = eval(config.APP.poll_interval)
+    config.INFLUX.token = open("TOKEN").readline().strip()
+    config.BLUELAB.tag_to_stationid = { x[0] : x[1] for x in config.BLUELAB.tag_to_stationid }
     return config
 
 def setup_mqtt(influx_schema, measurement, on_mqtt_message):
@@ -97,8 +100,8 @@ def on_mqtt_message(client, userdata, message):
     measurement = userdata["measurement"]
 
     station_id = message.topic.split("/")[1]
-    if station_id in CONFIG.MQTT.to_stationid.keys():
-        station_id = CONFIG.MQTT.to_stationid[station_id]
+    if station_id in CONFIG.MQTT.tag_to_stationid.keys():
+        station_id = CONFIG.MQTT.tag_to_stationid[station_id]
     tags = {"station_id": station_id}
 
     fields = data["ENERGY"]
@@ -164,7 +167,7 @@ def manage_lights(on_time, off_time, mqtt_client=None):
 
 CONFIG = process_config('config.yml')
 influx_schema = {
-    "endpoint": CONFIG.INFLUX.influx_url,
+    "endpoint": CONFIG.INFLUX.url,
     "org": CONFIG.INFLUX.org,
     "token": CONFIG.INFLUX.token,
     "bucket": CONFIG.INFLUX.bucket,
