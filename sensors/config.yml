@@ -36,4 +36,5 @@ BLUELAB:
     ["52rf", "lgrow"],
     ["4q3f", "farm"]
   ]
+  log_dir: "/home/pi/.local/share/Bluelab/Connect/logs"
 

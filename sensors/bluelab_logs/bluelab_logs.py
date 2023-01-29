@@ -107,10 +107,14 @@ def get_data(csv_file: Union[str, Path]):
     return readings
 
 
-def sample_bluelab_data(last_timestamp: datetime.datetime, poll_interval: int, last_log: Optional[str]=None):
+def sample_bluelab_data(last_timestamp: datetime.datetime,
+                        poll_interval: int,
+                        log_dir: Optional[str]=LOGDIR,
+                        last_log: Optional[str]=None
+                        ):
     BUFFER = 30
     if not last_log:
-        last_log = get_last_log(LOGDIR)
+        last_log = get_last_log(log_dir)
     data = get_data(last_log)
     values = []
     end = None
