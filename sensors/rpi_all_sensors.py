@@ -227,7 +227,7 @@ while True:
     if CONFIG.BLUELAB.available:
         bluelab_data = bluelab_logs.sample_bluelab_data(last_timestamp,
                                                         CONFIG.APP.poll_interval,
-                                                        log_dir=CONFIG.BLUELAB.logdir)
+                                                        log_dir=CONFIG.BLUELAB.log_dir)
         if bluelab_data is not None and len(bluelab_data) > 0:
             for d in bluelab_data:
                 #  ['tag', 'timestamp', 'ec', 'ph', 'temp']
