@@ -96,14 +96,17 @@ def get_data(csv_file: Union[str, Path]):
     with open(csv_file) as f:
         reader = csv.reader(f)
         parsers = parse_header(reader)
-        for i, row in enumerate(reader):
-            irow = iter(row)
-            timestamp = datetime.datetime.strptime(next(irow), '%Y-%m-%d %H:%M:%S')
-            ecUnit = next(irow)
-            assert ecUnit == 'EC', f"Incorrect EC unit: {ecUnit}"
-            tempUnit = next(irow)
-            assert tempUnit == 'C', f"Incorrect temp unit: {tempUnit}"
-            readings.append([p(timestamp, irow) for p in parsers])
+        try:
+            for i, row in enumerate(reader):
+                irow = iter(row)
+                timestamp = datetime.datetime.strptime(next(irow), '%Y-%m-%d %H:%M:%S')
+                ecUnit = next(irow)
+                assert ecUnit == 'EC', f"Incorrect EC unit: {ecUnit}"
+                tempUnit = next(irow)
+                assert tempUnit == 'C', f"Incorrect temp unit: {tempUnit}"
+                readings.append([p(timestamp, irow) for p in parsers])
+        except csv.Error as e:
+            warnings.warn(f"Error parsing Bluelab log file: {e}")
     return readings
 
 
