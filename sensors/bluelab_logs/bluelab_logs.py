@@ -105,7 +105,7 @@ def get_data(csv_file: Union[str, Path]):
                 tempUnit = next(irow)
                 assert tempUnit == 'C', f"Incorrect temp unit: {tempUnit}"
                 readings.append([p(timestamp, irow) for p in parsers])
-        except csv.Error as e:
+        except Exception as e:
             warnings.warn(f"Error parsing Bluelab log file: {e}")
     return readings
 
