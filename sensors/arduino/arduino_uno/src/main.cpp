@@ -44,7 +44,7 @@ char pass[] = "G7UtKycGmxGYDq";
 // #define INFLUXDB_SERVER "farmuaa1.farmurban.co.uk"
 // InfluxDB v2 server or cloud API authentication token (Use: InfluxDB UI -> Load Data -> API Tokens -> <select token>)
 // #define INFLUXDB_TOKEN "qC2iVoUIVgHmfr6nL6kLXeinh3PpC_duaoqbPO7HtSGW8RUyumq6X4v35nZz-73qco3f66P8pbTTRJ20DKsEoQ=="
-#define INFLUXDB_TOKEN "uttOd9NOwlo6ym_N7wnpOug_5b8ts81Ue9RTais7RDVkXk51m0b9IK9Ks-95DanRntS_qqKH770Jh8tB5-nrsg=="
+#define INFLUXDB_TOKEN "jmhtTmGBbzIfpaAmkO5bX2X8YHaZja5FHeplIZGjivGyXKYXExOTv75h6ByIJHH695LwEwUl1g1CHqTADITxkmzTdA=="
 // InfluxDB v2 organization id (Use: InfluxDB UI -> User -> About -> Common Ids )
 // #define INFLUXDB_ORG "s.bannon@liverpool.ac.uk"
 #define INFLUXDB_ORG "Farm Urban"
