@@ -14,39 +14,46 @@
 #include "DFRobot_EC.h"
 #include "DFRobot_PH.h"
 
-// #define MOCK ;
-char ssid[] = "FUsensors";
-char pass[] = "12345678";
-// char ssid[] = "PLUSNET-CFC9WG";
-// char pass[] = "G7UtKycGmxGYDq";
+// char ssid[] = "FUsensors";
+// char pass[] = "12345678";
+char ssid[] = "PLUSNET-CFC9WG";
+char pass[] = "G7UtKycGmxGYDq";
 // char ssid[] = "jmht";
 // char pass[] = "8c6766c9538b";
-// char ssid[] = "VodafoneConnect86275858";
-// char pass[] = "8bpfa84mvmtpulm";
 // char ssid[] = "Farm Urban";
 // char pass[] = "v8fD53Rs";
 
-// Will be different depending on the reference voltage
-#define VOLTAGE_CONVERSION 5000;
+// #define MOCK ;
+
+#define HAVE_TEMP_HUMIDITY // Always need this
+// #define HAVE_FLOW
+// #define HAVE_TEMP_WET
+// -- Digital Inputs -- //
+#define HAVE_LIGHT
+#define HAVE_CO2
+// #define HAVE_EC
+// #define HAVE_PH
+#define HAVE_MOISTURE
+
 
 // InfluxDB v2 server url, e.g. https://eu-central-1-1.aws.cloud2.influxdata.com (Use: InfluxDB UI -> Load Data -> Client Libraries)
 #define INFLUXDB_SSL // Uncomment to connect via SSL on port 443
-#define INFLUXDB_SERVER "europe-west1-1.gcp.cloud2.influxdata.com"
-// #define INFLUXDB_SERVER "farmuaa1.farmurban.co.uk"
 // #define INFLUXDB_PORT 8086
+// #define INFLUXDB_SERVER "europe-west1-1.gcp.cloud2.influxdata.com"
+#define INFLUXDB_SERVER "eu-central-1-1.aws.cloud2.influxdata.com"
+// #define INFLUXDB_SERVER "farmuaa1.farmurban.co.uk"
 // InfluxDB v2 server or cloud API authentication token (Use: InfluxDB UI -> Load Data -> API Tokens -> <select token>)
-#define INFLUXDB_TOKEN "JMHTqC2iVoUIVgHmfr6nL6kLXeinh3PpC_duaoqbPO7HtSGW8RUyumq6X4v35nZz-73qco3f66P8pbTTRJ20DKsEoQ=="
-// #define INFLUXDB_TOKEN "jmhtscW9V68kenPTzEkGUAtky-7awOMuo71pPGnCJ3gEdJWNNFBrlvp5atHTSFttVY4rRj0796xBgkuaF_YkSQExBg=="
-// #define INFLUXDB_TOKEN "jmhtmIA1iQHZV3WdPQQEbsi3IpVhp7b4sWlQ3rh8reV3Y-nAOLsCeixv0CZ2RETOTaERl4HhnAwqqNNAZN1fLZU_cA=="
+// #define INFLUXDB_TOKEN "qC2iVoUIVgHmfr6nL6kLXeinh3PpC_duaoqbPO7HtSGW8RUyumq6X4v35nZz-73qco3f66P8pbTTRJ20DKsEoQ=="
+#define INFLUXDB_TOKEN "uttOd9NOwlo6ym_N7wnpOug_5b8ts81Ue9RTais7RDVkXk51m0b9IK9Ks-95DanRntS_qqKH770Jh8tB5-nrsg=="
 // InfluxDB v2 organization id (Use: InfluxDB UI -> User -> About -> Common Ids )
-#define INFLUXDB_ORG "s.bannon@liverpool.ac.uk"
-// #define INFLUXDB_ORG "Farm Urban"
-// InfluxDB v2 bucket name (Use: InfluxDB UI ->  Data -> Buckets)
-#define INFLUXDB_BUCKET "UTC Experiment 1"
-// #define INFLUXDB_BUCKET "cryptfarm"
+// #define INFLUXDB_ORG "s.bannon@liverpool.ac.uk"
+#define INFLUXDB_ORG "Farm Urban"
+// #define INFLUXDB_BUCKET "UTC Experiment 1"
+#define INFLUXDB_BUCKET "Jens Home"
 
 #define INFLUXDB_MEASUREMENT "sensors"
-#define INFLUXDB_STATION_ID "sys2"
+#define INFLUXDB_STATION_ID "ard1"
+
 
 #ifdef MOCK
 #define SAMPLE_WINDOW 5000
@@ -56,21 +63,17 @@ char pass[] = "12345678";
 #endif
 
 // Analog Inputs
-#define HAVE_LIGHT
-int lightPin = A0;
-#define HAVE_CO2
-int co2Pin = A1;
-#define HAVE_EC
-int ecPin = A2;
-// #define HAVE_PH
-int phPin = A3;
+int lightPin = A0; // HAVE_LIGHT
+int co2Pin = A1; // HAVE_CO2
+int ecPin = A2; // HAVE_EC
+int phPin = A3; // HAVE_PH
+int moisturePin = A4; // HAVE_MOISTURE
 
 // Digital Inputs
 // Always need HAVE_TEMP_HUMIDITY or else need to edit the line protocol to not get errors
-int dhtPin = 2; // Temp and Humidity
-#define HAVE_FLOW
-int SEN0217_Pin = 3; // Flow sensor - only certain pins https://www.arduino.cc/reference/en/language/functions/external-interrupts/attachinterrupt/
-#define HAVE_TEMP_WET
+int dhtPin = 2; // HAVE_TEMP_HUMIDITY
+// Flow sensor - only certain pins https://www.arduino.cc/reference/en/language/functions/external-interrupts/attachinterrupt/
+int SEN0217_Pin = 3; // HAVE_FLOW
 int DS18S20_Pin = 4; // Wet temperature
 
 // Data collecting structures
@@ -83,6 +86,9 @@ volatile int pulseCount; // Flow Sensor
 // Wifi control
 int wifiStatus = WL_IDLE_STATUS; // the Wifi radio's status
 WiFiClient wifiClient;
+
+// Will be different depending on the reference voltage
+#define VOLTAGE_CONVERSION 5000;
 
 int getCO2(int analogPin)
 {
@@ -187,6 +193,15 @@ float getFlow()
 void flowPulse()
 {
   pulseCount += 1;
+}
+
+int getMoisture(int moisturePin)
+{
+  // Need to calibrate this
+  int dry = 587;
+  int wet = 84;
+  int reading = analogRead(moisturePin);
+  return (int)(100.0 * (dry - reading) / (dry - wet));
 }
 
 void printMacAddress(byte mac[])
@@ -413,7 +428,7 @@ int sendData(String data)
   }
 }
 
-String createLineProtocol(int light, float tempair, float humidity, float flow, int co2, float tempwet, float ec, float ph)
+String createLineProtocol(int light, float tempair, float humidity, float flow, int co2, float tempwet, float ec, float ph, int moisture)
 {
   String lineProtocol = INFLUXDB_MEASUREMENT;
   // Tags
@@ -448,6 +463,10 @@ String createLineProtocol(int light, float tempair, float humidity, float flow, 
 #ifdef HAVE_PH
   lineProtocol += ",ph=";
   lineProtocol += String(ph, 2);
+#endif
+#ifdef HAVE_MOISTURE
+  lineProtocol += ",moisture=";
+  lineProtocol += moisture;
 #endif
   return lineProtocol;
 }
@@ -499,7 +518,8 @@ void loop()
   float tempwet = getTempWet();
   float ec = getEC(ecPin, tempwet);
   float ph = getPH(phPin, tempwet);
-  String lineProtocol = createLineProtocol(light, tempair, humidity, flow, co2, tempwet, ec, ph);
+  int moisture = getMoisture(moisturePin);
+  String lineProtocol = createLineProtocol(light, tempair, humidity, flow, co2, tempwet, ec, ph, moisture);
   Serial.print("Created line protocol: ");
   Serial.println(lineProtocol);
   int ret = sendData(lineProtocol);
