@@ -87,6 +87,7 @@ from(bucket: "cryptfarm")
   r with
   _value:
     if r["_field"] == "light" then (r["_value"] / 50.0) + 20.0
+    else if r["_field"] == "tempair" then (r["_value"] / 8.0)
     else r["_value"]
   }))
   |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)
