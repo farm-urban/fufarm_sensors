@@ -14,10 +14,10 @@
 #include "DFRobot_EC.h"
 #include "DFRobot_PH.h"
 
-// char ssid[] = "FUsensors";
-// char pass[] = "12345678";
-char ssid[] = "PLUSNET-CFC9WG";
-char pass[] = "G7UtKycGmxGYDq";
+char ssid[] = "FUsensors";
+char pass[] = "12345678";
+// char ssid[] = "PLUSNET-CFC9WG";
+// char pass[] = "G7UtKycGmxGYDq";
 // char ssid[] = "jmht";
 // char pass[] = "8c6766c9538b";
 // char ssid[] = "Farm Urban";
@@ -26,33 +26,33 @@ char pass[] = "G7UtKycGmxGYDq";
 // #define MOCK ;
 
 #define HAVE_TEMP_HUMIDITY // Always need this
-// #define HAVE_FLOW
-// #define HAVE_TEMP_WET
+#define HAVE_FLOW
+#define HAVE_TEMP_WET
 // -- Digital Inputs -- //
 #define HAVE_LIGHT
 #define HAVE_CO2
-// #define HAVE_EC
+#define HAVE_EC
 // #define HAVE_PH
-#define HAVE_MOISTURE
+// #define HAVE_MOISTURE
 
 
 // InfluxDB v2 server url, e.g. https://eu-central-1-1.aws.cloud2.influxdata.com (Use: InfluxDB UI -> Load Data -> Client Libraries)
 #define INFLUXDB_SSL // Uncomment to connect via SSL on port 443
 // #define INFLUXDB_PORT 8086
-// #define INFLUXDB_SERVER "europe-west1-1.gcp.cloud2.influxdata.com"
-#define INFLUXDB_SERVER "eu-central-1-1.aws.cloud2.influxdata.com"
+#define INFLUXDB_SERVER "europe-west1-1.gcp.cloud2.influxdata.com"
+// #define INFLUXDB_SERVER "eu-central-1-1.aws.cloud2.influxdata.com"
 // #define INFLUXDB_SERVER "farmuaa1.farmurban.co.uk"
 // InfluxDB v2 server or cloud API authentication token (Use: InfluxDB UI -> Load Data -> API Tokens -> <select token>)
-// #define INFLUXDB_TOKEN "qC2iVoUIVgHmfr6nL6kLXeinh3PpC_duaoqbPO7HtSGW8RUyumq6X4v35nZz-73qco3f66P8pbTTRJ20DKsEoQ=="
-#define INFLUXDB_TOKEN "jmhtTmGBbzIfpaAmkO5bX2X8YHaZja5FHeplIZGjivGyXKYXExOTv75h6ByIJHH695LwEwUl1g1CHqTADITxkmzTdA=="
+#define INFLUXDB_TOKEN "jmhtqC2iVoUIVgHmfr6nL6kLXeinh3PpC_duaoqbPO7HtSGW8RUyumq6X4v35nZz-73qco3f66P8pbTTRJ20DKsEoQ=="
+// #define INFLUXDB_TOKEN "jmhtTmGBbzIfpaAmkO5bX2X8YHaZja5FHeplIZGjivGyXKYXExOTv75h6ByIJHH695LwEwUl1g1CHqTADITxkmzTdA=="
 // InfluxDB v2 organization id (Use: InfluxDB UI -> User -> About -> Common Ids )
-// #define INFLUXDB_ORG "s.bannon@liverpool.ac.uk"
-#define INFLUXDB_ORG "Farm Urban"
-// #define INFLUXDB_BUCKET "UTC Experiment 1"
-#define INFLUXDB_BUCKET "Jens Home"
+#define INFLUXDB_ORG "s.bannon@liverpool.ac.uk"
+// #define INFLUXDB_ORG "Farm Urban"
+#define INFLUXDB_BUCKET "UTC Experiment 1"
+// #define INFLUXDB_BUCKET "Jens Home"
 
 #define INFLUXDB_MEASUREMENT "sensors"
-#define INFLUXDB_STATION_ID "ard1"
+#define INFLUXDB_STATION_ID "sys1"
 
 
 #ifdef MOCK
