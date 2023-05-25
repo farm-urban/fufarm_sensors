@@ -313,7 +313,7 @@ void connectToWifi()
       Serial.print("Failed to connect on attempt:");
       Serial.print(attempts);
       Serial.print(" - reason:");
-      Serial.println(WiFi.reasonCode());
+      Serial.println(WiFi.reasonCode()); // https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/wifi.html#wi-fi-reason-code
       Serial.println();
     }
     Serial.print("Attempting to connect to WPA SSID: ");
