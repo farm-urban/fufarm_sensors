@@ -14,28 +14,38 @@
 #include "DFRobot_EC.h"
 #include "DFRobot_PH.h"
 
-char ssid[] = "FUsensors";
-char pass[] = "12345678";
-// char ssid[] = "PLUSNET-CFC9WG";
-// char pass[] = "G7UtKycGmxGYDq";
-// char ssid[] = "jmht";
-// char pass[] = "8c6766c9538b";
-// char ssid[] = "Farm Urban";
-// char pass[] = "v8fD53Rs";
+# define MQTT
+#ifdef MQTT
+#include <PubSubClient.h>
+#include <ArduinoJson.h>
+// Using char* as might store in PROGMEM later
+char* MQTT_CLIENT_ID = "office_dht22";
+char* MQTT_SERVER_IP = "192.168.1.120";
+uint16_t MQTT_SERVER_PORT = 1883;
+char* MQTT_USER = "homeassistant";
+char* MQTT_PASSWORD = "1234567890";
+char* MQTT_SENSOR_TOPIC = "farm/sensor1";
+#endif
+
+// char ssid[] = "FUsensors";
+// char pass[] = "12345678";
+char ssid[] = "PLUSNET-CFC9WG";
+char pass[] = "G7UtKycGmxGYDq";
 
 // #define MOCK ;
 
 #define HAVE_TEMP_HUMIDITY // Always need this
-#define HAVE_FLOW
-#define HAVE_TEMP_WET
+// #define HAVE_FLOW
+// #define HAVE_TEMP_WET
 // -- Digital Inputs -- //
-#define HAVE_LIGHT
-#define HAVE_CO2
-#define HAVE_EC
+// #define HAVE_LIGHT
+// #define HAVE_CO2
+// #define HAVE_EC
 // #define HAVE_PH
 // #define HAVE_MOISTURE
 
-
+// #define INFLUXDB
+#ifdef INFLUXDB
 // InfluxDB v2 server url, e.g. https://eu-central-1-1.aws.cloud2.influxdata.com (Use: InfluxDB UI -> Load Data -> Client Libraries)
 #define INFLUXDB_SSL // Uncomment to connect via SSL on port 443
 // #define INFLUXDB_PORT 8086
@@ -50,9 +60,9 @@ char pass[] = "12345678";
 // #define INFLUXDB_ORG "Farm Urban"
 #define INFLUXDB_BUCKET "UTC Experiment 1"
 // #define INFLUXDB_BUCKET "Jens Home"
-
 #define INFLUXDB_MEASUREMENT "sensors"
 #define INFLUXDB_STATION_ID "sys1"
+#endif
 
 
 #ifdef MOCK
@@ -86,6 +96,10 @@ volatile int pulseCount; // Flow Sensor
 // Wifi control
 int wifiStatus = WL_IDLE_STATUS; // the Wifi radio's status
 WiFiClient wifiClient;
+
+#ifdef MQTT
+PubSubClient client(wifiClient);
+#endif // MQTT
 
 // Will be different depending on the reference voltage
 #define VOLTAGE_CONVERSION 5000;
@@ -336,9 +350,9 @@ void shutdownWifi()
   WiFi.end();
 }
 
+#ifdef INFLUXDB
 // From: https://github.com/tobiasschuerg/InfluxDB-Client-for-Arduino/blob/master/src/util/helpers.cpp
 static char invalidChars[] = "$&+,/:;=?@ <>#%{}|\\^~[]`";
-
 static char hex_digit(char c)
 {
   return "0123456789ABCDEF"[c & 0x0F];
@@ -370,62 +384,6 @@ String urlEncode(const char *src)
       ret += c;
   }
   return ret;
-}
-
-int postData(String data){
-  String url = "/api/v2/write?org=" + urlEncode(INFLUXDB_ORG);
-  url += "&bucket=";
-  url += urlEncode(INFLUXDB_BUCKET);
-  wifiClient.println("POST " + url + " HTTP/1.1");
-  wifiClient.println("Host: " + String(INFLUXDB_SERVER));
-  wifiClient.println("Content-Type: text/plain");
-  wifiClient.println("Authorization: Token " + String(INFLUXDB_TOKEN));
-  wifiClient.println("Connection: close");
-  wifiClient.print("Content-Length: ");
-  wifiClient.println(data.length());
-  wifiClient.println();   // end HTTP header
-  wifiClient.print(data); // send HTTP body
-
-  // Debug return values
-  delay(2000); // Need to wait for response to come back - not sure of optimal time
-  Serial.println("<Http Response>");
-  while (wifiClient.available())
-  {
-    // read an incoming byte from the server and print it to serial monitor:
-    char c = wifiClient.read();
-    Serial.print(c);
-  }
-  Serial.println("</Http Response>");
-
-  if (wifiClient.connected())
-  {
-    wifiClient.stop();
-  }
-  Serial.println("disconnected");
-  return 0;
-}
-
-int sendData(String data)
-{
-#ifdef MOCK
-  Serial.println("Skipping sendData");
-  return;
-#endif
-  Serial.print("Attempting to connect to: ");
-  Serial.println(INFLUXDB_SERVER);
-#ifdef INFLUXDB_SSL
-  if (wifiClient.connectSSL(INFLUXDB_SERVER, 443))
-#else
-  if (wifiClient.connect(INFLUXDB_SERVER, INFLUXDB_PORT))
-#endif
-  {
-    Serial.println("connected");
-    postData(data);
-  } else { // if not connected:
-    Serial.println("connection failed");
-    wifiClient.stop();
-    return -1;
-  }
 }
 
 String createLineProtocol(int light, float tempair, float humidity, float flow, int co2, float tempwet, float ec, float ph, int moisture)
@@ -471,6 +429,130 @@ String createLineProtocol(int light, float tempair, float humidity, float flow, 
   return lineProtocol;
 }
 
+int postData(String lineProtocol){
+  String url = "/api/v2/write?org=" + urlEncode(INFLUXDB_ORG);
+  url += "&bucket=";
+  url += urlEncode(INFLUXDB_BUCKET);
+  wifiClient.println("POST " + url + " HTTP/1.1");
+  wifiClient.println("Host: " + String(INFLUXDB_SERVER));
+  wifiClient.println("Content-Type: text/plain");
+  wifiClient.println("Authorization: Token " + String(INFLUXDB_TOKEN));
+  wifiClient.println("Connection: close");
+  wifiClient.print("Content-Length: ");
+  wifiClient.println(lineProtocol.length());
+  wifiClient.println();   // end HTTP header
+  wifiClient.print(lineProtocol); // send HTTP body
+
+  // Debug return values
+  delay(2000); // Need to wait for response to come back - not sure of optimal time
+  Serial.println("<Http Response>");
+  while (wifiClient.available())
+  {
+    // read an incoming byte from the server and print it to serial monitor:
+    char c = wifiClient.read();
+    Serial.print(c);
+  }
+  Serial.println("</Http Response>");
+  return 0;
+}
+
+int postDataToInfluxDB(int light, float tempair, float humidity, float flow, int co2, float tempwet, float ec, float ph, int moisture)
+{
+  String lineProtocol = createLineProtocol(light, tempair, humidity, flow, co2, tempwet, ec, ph, moisture);
+  Serial.print("Created line protocol: ");
+  Serial.println(lineProtocol);
+#ifdef MOCK
+  Serial.println("Skipping postDataToInfluxDB");
+  return;
+#endif
+  Serial.print("Attempting to connect to: ");
+  Serial.println(INFLUXDB_SERVER);
+#ifdef INFLUXDB_SSL
+  if (wifiClient.connectSSL(INFLUXDB_SERVER, 443))
+#else
+  if (wifiClient.connect(INFLUXDB_SERVER, INFLUXDB_PORT))
+#endif
+  {
+    Serial.println("connected");
+    postData(lineProtocol);
+    if (wifiClient.connected())
+    {
+      wifiClient.stop();
+    }
+  Serial.println("disconnected");
+  } else { // if not connected:
+    Serial.println("connection failed");
+    wifiClient.stop();
+    return -1;
+  }
+}
+#endif // INFLUXDB
+
+
+#ifdef MQTT
+void publishData(int light, float tempair, float humidity, float flow, int co2, float tempwet, float ec, float ph, int moisture) {
+  // create a JSON object
+  // doc : https://github.com/bblanchon/ArduinoJson/wiki/API%20Reference
+  StaticJsonDocument<200> doc;
+  // INFO: the data must be converted into a string; a problem occurs when using floats...
+  doc["tempair"] = (String)tempair;
+  doc["humidity"] = (String)humidity;
+#ifdef HAVE_LIGHT
+  doc["light"] = (String)light;
+#endif
+#ifdef HAVE_FLOW
+  doc["flow"] = (String)flow;
+#endif
+#ifdef HAVE_CO2
+  doc["co2"] = (String)co2;
+#endif
+#ifdef HAVE_TEMP_WET
+  doc["tempwet"] = (String)tempwet;
+#endif
+#ifdef HAVE_EC
+  doc["ec"] = (String)ec;
+#endif
+#ifdef HAVE_PH
+  doc["ph"] = (String)ph;
+#endif
+#ifdef HAVE_MOISTURE
+  doc["moisture"] = (String)moisture;
+#endif
+  serializeJson(doc, Serial);
+  Serial.println();
+  Serial.flush();
+  /*
+     {
+        "temperature": "23.20" ,
+        "humidity": "43.70"
+     }
+  */
+  char buffer[256];
+  serializeJson(doc, buffer);
+  client.publish(MQTT_SENSOR_TOPIC, buffer, true);
+  // yield();
+}
+
+
+void reconnect() {
+  // Loop until we're reconnected
+  while (!client.connected()) {
+    Serial.println("INFO: Attempting MQTT connection...");
+    // Attempt to connect
+    if (client.connect(MQTT_CLIENT_ID, MQTT_USER, MQTT_PASSWORD)) {
+      Serial.println("INFO: connected");
+    } else {
+      Serial.print("ERROR: failed, rc=");
+      Serial.print(client.state());
+      Serial.println("DEBUG: try again in 5 seconds");
+      // Wait 5 seconds before retrying
+      delay(5000);
+    }
+  }
+}
+#endif // MQTT
+
+
 void setup()
 {
   //    pinMode(LED_BUILTIN, OUTPUT);
@@ -500,6 +582,13 @@ void setup()
     Serial.println("Please upgrade the firmware");
   }
   connectToWifi();
+
+#ifdef MQTT
+    // init the MQTT connection
+  client.setServer(MQTT_SERVER_IP, MQTT_SERVER_PORT);
+  // client.setCallback(callback);
+#endif // MQTT
+
 #endif // MOCK
 } // end setup
 
@@ -519,10 +608,20 @@ void loop()
   float ec = getEC(ecPin, tempwet);
   float ph = getPH(phPin, tempwet);
   int moisture = getMoisture(moisturePin);
-  String lineProtocol = createLineProtocol(light, tempair, humidity, flow, co2, tempwet, ec, ph, moisture);
-  Serial.print("Created line protocol: ");
-  Serial.println(lineProtocol);
-  int ret = sendData(lineProtocol);
+#ifdef INFLUXDB
+  postDataToInfluxDB(light, tempair, humidity, flow, co2, tempwet, ec, ph, moisture);
+#endif // INFLUXDB
+
+#ifdef MQTT
+  if (!client.connected()) {
+    reconnect();
+  }
+  client.loop();
+  publishData(light, tempair, humidity, flow, co2, tempwet, ec, ph, moisture);
+  Serial.println("INFO: Closing the MQTT connection");
+  client.disconnect();
+#endif // MQTT
+
   //   // If no Wifi signal, try to reconnect it
   //  if ((WiFi.RSSI() == 0) && (wifiMulti.run() != WL_CONNECTED)) {
   //    Serial.println("Wifi connection lost");
