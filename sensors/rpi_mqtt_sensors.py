@@ -45,9 +45,8 @@ def process_config(file_path):
 def setup_mqtt():
     client = mqtt.Client()
     client.username_pw_set(CONFIG.MQTT.username, CONFIG.MQTT.password)
-    client.connect("localhost", port=1883)
+    client.connect(CONFIG.MQTT.host, port=CONFIG.MQTT.port)
     return client
-
 
 CONFIG = process_config('config.yml')
 logging.basicConfig(level=CONFIG.APP.log_level, format=f"%(asctime)s {CONFIG.APP.station_id}: %(message)s")
