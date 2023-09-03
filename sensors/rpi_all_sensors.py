@@ -7,6 +7,50 @@ screen -S arduino  /dev/ttyACM0 9600
 
 Kill session: ctrl-A K 
 
+Example of config.yml:
+
+```
+APP:
+  mock: False
+  log_level: 'DEBUG'
+  poll_interval: 60 * 5
+  have_bluelab: False
+  gpio_sensors: False
+  local_timestamp: True
+  control_lights: False
+  light_schedule: ("06:00", 16)
+
+INFLUX:
+  station_id: "rpi"
+  token: "PLACE TOKEN IN TOKEN FILE"
+  measurement: "sensors"
+  bucket: "cryptfarm"
+  org: "Farm Urban"
+  url: "https://influx.farmurban.co.uk"
+
+MQTT:
+  available: False
+  measurement: "energy"
+  tag_to_stationid: [
+    ["FU_System_2", "Propagation"]
+  ]
+  subscribe_topics: [
+      "tele/FU_Fans/SENSOR",
+      "tele/FU_System_1/SENSOR",
+      "tele/FU_System_2/SENSOR",
+      "h2Pwr/STATUS",
+  ]
+
+BLUELAB:
+  available: True
+  measurement: "bluelab"
+  tag_to_stationid: [
+    ["52rf", "lgrow"],
+    ["4q3f", "farm"]
+  ]
+  log_dir: "/home/pi/.local/share/Bluelab/Connect/logs"
+```
+
 """
 import datetime
 import logging
