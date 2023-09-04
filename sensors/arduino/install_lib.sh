@@ -8,6 +8,15 @@ function getPlatform {
         MINGW*)     machine=MinGw;;
         *)          machine="UNKNOWN:${unameOut}"
     esac
+#    if [ ${machine} = Linux ]; then
+#        if [ $(cat /proc/cpuinfo | grep -c  Raspberry) -gt 0 ]; then
+#            if [ $(getconf LONG_BIT) -eq 64 ]; then
+#                machine=Raspberry64
+#            else
+#                machine=Raspberry32
+#            fi
+#        fi
+#    fi
     echo ${machine}
 }
 
