@@ -45,7 +45,8 @@ def process_config(file_path):
 def setup_mqtt():
     client = mqtt.Client()
     client.username_pw_set(CONFIG.MQTT.username, CONFIG.MQTT.password)
-    client.connect(CONFIG.MQTT.host, port=CONFIG.MQTT.port)
+    ret = client.connect(CONFIG.MQTT.host, port=CONFIG.MQTT.port)
+    logger.debug(f"MQTT client connect return code: {ret}")
     return client
 
 CONFIG = process_config('config.yml')
@@ -85,7 +86,7 @@ while True:
     if data:
         # Send sensor data from dfrobot Arduino and direct sensors
         logger.debug(f"Publishing to {CONFIG.MQTT.sensor_topic}: {data}")
-        mqtt_client.publish(CONFIG.MQTT.sensor_topic, data)
+        mqtt_client.publish(CONFIG.MQTT.sensor_topic, json.dumps(data))
 
     if CONFIG.BLUELAB.available:
         bluelab_data = bluelab_logs.sample_bluelab_data(last_timestamp,
@@ -99,7 +100,7 @@ while True:
                 topic = f"{CONFIG.MQTT.bluelab_topic}/{station_id}"
                 # timestamp?
                 logger.debug(f"Publishing to {topic}: {data}")
-                mqtt_client.publish(topic, data)
+                mqtt_client.publish(topic, json.dumps(data))
 
     last_timestamp = datetime.datetime.now()
     firstloop = False
