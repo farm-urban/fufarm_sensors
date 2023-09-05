@@ -8,21 +8,21 @@ function getPlatform {
         MINGW*)     machine=MinGw;;
         *)          machine="UNKNOWN:${unameOut}"
     esac
-#    if [ ${machine} = Linux ]; then
-#        if [ $(cat /proc/cpuinfo | grep -c  Raspberry) -gt 0 ]; then
-#            if [ $(getconf LONG_BIT) -eq 64 ]; then
-#                machine=Raspberry64
-#            else
-#                machine=Raspberry32
-#            fi
-#        fi
-#    fi
+   if [ ${machine} = Linux ]; then
+       if [ $(cat /proc/cpuinfo | grep -c  Raspberry) -gt 0 ]; then
+           if [ $(getconf LONG_BIT) -eq 32 ]; then
+               machine=Raspberry32
+           fi
+       fi
+   fi
     echo ${machine}
 }
 
 
 platform=$(getPlatform)
-if [ ${platform} = Linux ]; then
+if [ ${platform} = Linux -o ${platform} = Raspberry32 ]; then
+    CLI_DIR=/opt/arduino-cli
+    export PATH=$CLI_DIR/bin:$PATH
     LIBDIR=$HOME/Arduino/libraries
 elif [ ${platform} = Mac ]; then
     LIBDIR=$HOME/Documents/Arduino/libraries
@@ -32,15 +32,22 @@ else
 fi
 
 # Set up cli on Linux - on OSX just use "brew install arduino-cli"
-if [ ${platform} = Linux ]; then
-    CLI_DIR=/opt/arduino-cli
-    export PATH=$CLI_DIR/bin:$PATH
+if [ ${platform} = Linux -o ${platform} = Raspberry32]; then
     if [ ! -f  $CLI_DIR/bin/arduino-cli ]
     then
         echo "Running setup"
         mkdir $CLI_DIR
         pushd $CLI_DIR
-        curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
+        if [ ${platform} = Raspberry32 ]; then
+            mkdir -p $CLI_DIR/bin
+            cd $CLI_DIR/bin
+            url=https://downloads.arduino.cc/arduino-cli/arduino-cli_latest_Linux_ARMv6.tar.gz
+            fname=$(basename $url)
+            curl -OL ${url}
+            tar -xf ${fname}
+        else
+            curl -SL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
+        fi
         popd
         arduino-cli config init
         arduino-cli core update-index
