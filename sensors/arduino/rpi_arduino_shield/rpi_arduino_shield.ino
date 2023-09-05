@@ -14,6 +14,7 @@ int lightPin = A0;
 int co2Pin = A1;
 int ecPin = A2;
 int phPin = A3;
+int moisturePin = A4;
 
 // Digital Inputs
 int dhtPin = 2; // Temp and Humidity
@@ -65,6 +66,15 @@ int getCO2(int analogPin){
       int voltage_diference=voltage-400;
       return (int) (voltage_diference*50.0/16.0);
     }
+}
+
+int getMoisture(int moisturePin)
+{
+  // Need to calibrate this
+  int dry = 587;
+  int wet = 84;
+  int reading = analogRead(moisturePin);
+  return (int)(100.0 * (dry - reading) / (dry - wet));
 }
 
 float getTempWet(){
@@ -154,6 +164,7 @@ void loop() {
     //float ph = getPH(phPin, twet);
     float flow = getFlow();
     int light = getLight(lightPin);
+    int moisture = getMoisture(moisturePin);
 
     // json
     doc["tempair"] = t;
@@ -164,6 +175,8 @@ void loop() {
     //doc["ph"] = ph;
     doc["flow"] = flow;
     doc["light"] = light;
+    doc["moisture"] = moisture;
+    
     serializeJson(doc, Serial);
     Serial.println();
     Serial.flush();
