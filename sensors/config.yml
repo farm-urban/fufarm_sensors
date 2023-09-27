@@ -20,6 +20,8 @@ BLUELAB:
 
 
 tasmota_EOB226 - orig
+
+
 # tasmota_EOB226:
 #   module: "Sonoff Pow R2"
 #   class: "power"
