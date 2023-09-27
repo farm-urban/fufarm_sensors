@@ -14,8 +14,8 @@ import paho.mqtt.client as mqtt
 
 # Local imports
 from bluelab_logs import bluelab_logs
-from util import gpio_sensors
 from util import dfrobot_sensors
+
 
 class obj(object):
     def __init__(self, d):
@@ -26,7 +26,10 @@ class obj(object):
                 setattr(self, k, obj(v) if isinstance(v, dict) else v)
 
     def __repr__(self):
-        return '<%s>' % str('\n '.join('%s : %s' % (k, repr(v)) for (k, v) in self.__dict__.items())) 
+        return "<%s>" % str(
+            "\n ".join("%s : %s" % (k, repr(v)) for (k, v) in self.__dict__.items())
+        )
+
 
 def process_config(file_path):
     with open(file_path, "r") as f:
@@ -39,8 +42,11 @@ def process_config(file_path):
 
     config.APP.poll_interval = eval(config.APP.poll_interval)
     if config.BLUELAB:
-        config.BLUELAB.tag_to_stationid = { x[0] : x[1] for x in config.BLUELAB.tag_to_stationid }
+        config.BLUELAB.tag_to_stationid = {
+            x[0]: x[1] for x in config.BLUELAB.tag_to_stationid
+        }
     return config
+
 
 def setup_mqtt():
     client = mqtt.Client()
@@ -49,17 +55,25 @@ def setup_mqtt():
     logger.debug(f"MQTT client connect return code: {ret}")
     return client
 
-CONFIG = process_config('config.yml')
-logging.basicConfig(level=CONFIG.APP.log_level, format=f"%(asctime)s {CONFIG.APP.station_id}: %(message)s")
+
+CONFIG = process_config("config.yml")
+logging.basicConfig(
+    level=CONFIG.APP.log_level,
+    format=f"%(asctime)s {CONFIG.APP.station_id}: %(message)s",
+)
 logger = logging.getLogger()
 
 if CONFIG.APP.gpio_sensors:
+    from util import gpio_sensors
+
     gpio_sensors.setup_devices()
 
 mqtt_client = setup_mqtt()
 mqtt_client.loop_start()
 
-last_timestamp = datetime.datetime.now() - datetime.timedelta(seconds=CONFIG.APP.poll_interval)
+last_timestamp = datetime.datetime.now() - datetime.timedelta(
+    seconds=CONFIG.APP.poll_interval
+)
 logger.info(
     f"\n\n### Sensor service starting loop at: {datetime.datetime.strftime(datetime.datetime.now(),'%d-%m-%Y %H:%M:%S')} ###\n\n"
 )
@@ -67,18 +81,18 @@ firstloop = True
 while True:
     # Below seems to raise an exception - not sure why
     if not mqtt_client.is_connected():
-       logger.error("mqtt_client not connected")
+        logger.error("mqtt_client not connected")
     #    mqtt_client.reconnect()
 
     if not firstloop:
         # Send first readings immediately - for debugging.
         if CONFIG.APP.gpio_sensors:
             gpio_sensors.reset_flow_counter()
-        # Need to pause so paddle can count rotations
+        # Need to pause so paddle can count rotations
         time.sleep(CONFIG.APP.poll_interval)
 
     data = dfrobot_sensors.sensor_readings()
-    if data is None: # No data from dfrobot Arduino sensors
+    if data is None:  # No data from dfrobot Arduino sensors
         data = {}
     if CONFIG.APP.gpio_sensors:
         data["flow"] = gpio_sensors.flow_rate(CONFIG.APP.poll_interval)
@@ -89,9 +103,9 @@ while True:
         mqtt_client.publish(CONFIG.MQTT.sensor_topic, json.dumps(data))
 
     if CONFIG.BLUELAB.available:
-        bluelab_data = bluelab_logs.sample_bluelab_data(last_timestamp,
-                                                        CONFIG.APP.poll_interval,
-                                                        log_dir=CONFIG.BLUELAB.log_dir)
+        bluelab_data = bluelab_logs.sample_bluelab_data(
+            last_timestamp, CONFIG.APP.poll_interval, log_dir=CONFIG.BLUELAB.log_dir
+        )
         if bluelab_data is not None and len(bluelab_data) > 0:
             for d in bluelab_data:
                 #  ['tag', 'timestamp', 'ec', 'ph', 'temp']
