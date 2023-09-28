@@ -6,9 +6,9 @@ APP:
   station_id: "main_sump"
 
 MQTT:
-  username: MQTT_USERNAME
-  password: MQTT_PASSWORD
-  host: MQTT_HOST
+  username: $MQTT_USERNAME
+  password: $MQTT_PASSWORD
+  host: $MQTT_HOST
   port: 1883
   sensor_topic: "main_sump/sensor"
   bluelab_topic: "bluelab"
