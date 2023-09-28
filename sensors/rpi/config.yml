@@ -6,20 +6,18 @@ APP:
   station_id: "main_sump"
 
 MQTT:
-  username: "homeassistant"
-  password: "1234567890"
-  host: "192.168.1.120"
+  username: MQTT_USERNAME
+  password: MQTT_PASSWORD
+  host: MQTT_HOST
   port: 1883
   sensor_topic: "main_sump/sensor"
   bluelab_topic: "bluelab"
 
 BLUELAB:
-  available: True
+  available: False
   tag_to_stationid: [["52rf", "lettus_grow"], ["4q3f", "main_sump"]]
   log_dir: "/home/pi/.local/share/Bluelab/Connect/logs"
-
-
-tasmota_EOB226 - orig
+# tasmota_EOB226 - orig
 # tasmota_EOB226:
 #   module: "Sonoff Pow R2"
 #   class: "power"
