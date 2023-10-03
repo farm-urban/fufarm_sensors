@@ -156,22 +156,27 @@ void loop() {
     //Serial.println("Starting main loop");
     //digitalWrite(LED_BUILTIN, HIGH);
     TempAndHumidity th = dht.getTempAndHumidity();
-    float t = th.temperature;
-    float h = th.humidity;
+    float temp = th.temperature;
+    float humidity = th.humidity;
     int co2 = getCO2(co2Pin);
     float twet = getTempWet();
-    float ec = getEC(ecPin, twet);
-    float ph = getPH(phPin, twet);
+    if (twet == -1000 || twet == -1001 || twet == -1002) {
+      float calibrationTemperature = temp;
+    } else {
+      float calibrationTemperature = twet;
+    }
+    float ec = getEC(ecPin, calibrationTemperature);
+    float ph = getPH(phPin, calibrationTemperature);
     float flow = getFlow();
     int light = getLight(lightPin);
     int moisture = getMoisture(moisturePin);
 
     // json
-    doc["tempair"] = t;
-    doc["humidity"] = h;
+    doc["tempair"] = temp;
+    doc["humidity"] = humidity;
     doc["tempwet"] = twet;
     doc["co2"] = co2;
-    doc["cond"] = ec; // For unfathomable reasons influxdb won't accept ec as a name so we use cond. WTF?!?!?!@@
+    doc["ec"] = ec; // For unfathomable reasons influxdb won't accept ec as a name so we use cond. WTF?!?!?!@@
     doc["ph"] = ph;
     doc["flow"] = flow;
     doc["light"] = light;
