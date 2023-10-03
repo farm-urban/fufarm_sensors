@@ -160,10 +160,9 @@ void loop() {
     float humidity = th.humidity;
     int co2 = getCO2(co2Pin);
     float twet = getTempWet();
+    float calibrationTemperature = twet;
     if (twet == -1000 || twet == -1001 || twet == -1002) {
-      float calibrationTemperature = temp;
-    } else {
-      float calibrationTemperature = twet;
+      calibrationTemperature = temp;
     }
     float ec = getEC(ecPin, calibrationTemperature);
     float ph = getPH(phPin, calibrationTemperature);
