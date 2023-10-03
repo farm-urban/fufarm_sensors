@@ -6,7 +6,7 @@
 #include "DFRobot_PH.h"
 
 // Time in milliseconds - 5 minutes = 1000 * 60 * 5 = 300000
-#define SAMPLE_WINDOW 300000
+#define SAMPLE_WINDOW 60000
 //#define SAMPLE_WINDOW 5000
 
 // Analog Inputs
@@ -160,8 +160,8 @@ void loop() {
     float h = th.humidity;
     int co2 = getCO2(co2Pin);
     float twet = getTempWet();
-    //float ec = getEC(ecPin, twet);
-    //float ph = getPH(phPin, twet);
+    float ec = getEC(ecPin, twet);
+    float ph = getPH(phPin, twet);
     float flow = getFlow();
     int light = getLight(lightPin);
     int moisture = getMoisture(moisturePin);
@@ -171,8 +171,8 @@ void loop() {
     doc["humidity"] = h;
     doc["tempwet"] = twet;
     doc["co2"] = co2;
-    //doc["cond"] = ec; // For unfathomable reasons influxdb won't accept ec as a name. WTF?!?!?!@@
-    //doc["ph"] = ph;
+    doc["cond"] = ec; // For unfathomable reasons influxdb won't accept ec as a name so we use cond. WTF?!?!?!@@
+    doc["ph"] = ph;
     doc["flow"] = flow;
     doc["light"] = light;
     doc["moisture"] = moisture;
