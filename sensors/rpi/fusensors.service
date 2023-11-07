@@ -1,0 +1,15 @@
+[Unit]
+After=tailscaled.service
+
+[Service]
+ExecStart=/opt/fu_sensors.git/py_venv/bin/python3 /opt/fu_sensors.git/sensors/rpi/rpi_mqtt_sensors.py
+WorkingDirectory=/opt/fu_sensors.git/sensors/rpi
+Restart=always
+StandardOutput=append:/opt/fu_sensors.git/sensors/rpi/poll.log
+StandardError=inherit
+SyslogIdentifier=fusensors
+User=pi
+Group=pi
+
+[Install]
+WantedBy=multi-user.target
