@@ -12,6 +12,8 @@ function getPlatform {
        if [ $(cat /proc/cpuinfo | grep -c  Raspberry) -gt 0 ]; then
            if [ $(getconf LONG_BIT) -eq 32 ]; then
                machine=Raspberry32
+            elif [ $(getconf LONG_BIT) -eq 64 ]; then
+               machine=Raspberry64
            fi
        fi
    fi
@@ -20,7 +22,7 @@ function getPlatform {
 
 
 platform=$(getPlatform)
-if [ ${platform} = Linux -o ${platform} = Raspberry32 ]; then
+if [ ${platform} = Linux -o ${platform} = Raspberry32 -o ${platform} = Raspberry64 ]; then
     CLI_DIR=/opt/arduino-cli
     export PATH=$CLI_DIR/bin:$PATH
     LIBDIR=$HOME/Arduino/libraries
@@ -32,7 +34,7 @@ else
 fi
 
 # Set up cli on Linux - on OSX just use "brew install arduino-cli"
-if [ ${platform} = Linux -o ${platform} = Raspberry32]; then
+if [ ${platform} = Linux -o ${platform} = Raspberry32 -o ${platform} = Raspberry64 ]; then
     if [ ! -f  $CLI_DIR/bin/arduino-cli ]
     then
         echo "Running setup"
