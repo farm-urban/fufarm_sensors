@@ -1,0 +1,17 @@
+mqtt:
+  host: localhost
+  port: 1883
+  user: hamqtt
+  password: "UbT4Rn3oY7!S9L"
+  topic_prefix: jens
+  ha_discovery:
+    enabled: yes
+
+stream_modules:
+  - name: dfrobot
+    module: serial
+    device: /dev/ttyACM0
+    baud: 9600
+    read_interval: 5
+
+
