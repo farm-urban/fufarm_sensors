@@ -3,15 +3,57 @@ mqtt:
   port: 1883
   user: hamqtt
   password: "UbT4Rn3oY7!S9L"
-  topic_prefix: jens
+  topic_prefix: sensors
   ha_discovery:
     enabled: yes
 
-stream_modules:
-  - name: dfrobot
-    module: serial
-    device: /dev/ttyACM0
-    baud: 9600
-    read_interval: 5
+sensor_modules:
+  - name: pina0
+    module: dfr0566_analog
+    i2c_bus_num: 1
+    chip_addr: 0x10
+
+  - name: dfr_ens160
+    module: dfr_ens160
+    i2c_bus_num: 1
+    chip_addr: 0x53
+
+sensor_inputs:
+  - name: light1
+    module: pina0
+    pin: 0
+    interval: 5
+    digits: 4
+
+  - name: moisture1
+    module: pina0
+    pin: 1
+    interval: 5
+    digits: 4
+
+  - name: air_quality
+    module: dfr_ens160
+    interval: 10
+    digits: 1
+    type: aqi
+
+  - name: volatile_organic_compounds
+    module: dfr_ens160
+    interval: 10
+    digits: 5
+    type: tvoc
+
+  - name: co2
+    module: dfr_ens160
+    interval: 10
+    digits: 5
+    type: co2
+
+#stream_modules:
+#  - name: dfrobot
+#    module: serial
+#    device: /dev/ttyACM0
+#    baud: 9600
+#    read_interval: 5
 
 
