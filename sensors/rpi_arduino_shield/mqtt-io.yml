@@ -2,7 +2,7 @@ logging:
   version: 1
   loggers:
     mqtt_io:
-      level: 'INFO'
+      level: 'WARN'
       handlers: ['console']
       propagate: True
   handlers: 
