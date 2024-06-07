@@ -16,7 +16,6 @@ logging:
       datefmt': '%Y-%m-%d %H:%M:%S'
 
 
-
 mqtt:
   host: localhost
   port: 1883
@@ -40,8 +39,11 @@ sensor_modules:
   - name: aht20
     module: aht20
 
-sensor_inputs:
+  - name: yfs201
+    module: yfs201
+    pin: 0
 
+sensor_inputs:
   - name: temperature1
     module: aht20
     type: temperature
@@ -56,6 +58,10 @@ sensor_inputs:
     module: pina0
     pin: 0
     digits: 0
+    interval: 10
+
+  - name: flow1
+    module: yfs201
     interval: 10
 
   - name: moisture1
