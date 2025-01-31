@@ -89,7 +89,7 @@ sensor_inputs:
     interval: 10
 
 #stream_modules:
-#  - name: dfrobot
+#  - name: rpiarduino
 #    module: serial
 #    device: /dev/ttyACM0
 #    baud: 9600
